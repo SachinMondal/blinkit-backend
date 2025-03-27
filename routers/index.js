@@ -3,7 +3,7 @@ const router = express.Router();
 
 // // Mount the user-related routes under /auth
 router.use("/auth", require("./auth"));
-// router.use("/metro", require("./metro"));
+router.use("/category", require("./category"));
 // router.use("/card", require("./card"));
 // router.use("/chatbot",require("./chatbot"));
 // router.use("/automation",require("./people"));
