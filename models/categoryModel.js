@@ -29,6 +29,10 @@ const categorySchema=new mongoose.Schema({
     seoDescription:{
         type:String
     },
+    isVisible:{
+        type:Boolean,
+        default: false
+     }
 });
 
 categorySchema.pre("save", function (next) {

@@ -1,5 +1,5 @@
 const Category = require("../models/categoryModel");
-const uploadImage = require("../utils/uploadImage");
+const {uploadImage} = require("../utils/uploadImage");
 const cloudinary = require("../config/cloudinary");
 const addCategory = async (req, res) => {
   try {
@@ -126,10 +126,34 @@ const deleteCategory = async (req, res) => {
   }
 };
 
+const getCategoriesWithSubcategories = async (req,res) => {
+  try {    
+    const categoriesWithSubcategories = await Category.aggregate([
+      {
+        $match: { parentCategory: null },
+      },
+      {
+        $lookup: {
+          from: "categories", 
+          localField: "_id",
+          foreignField: "parentCategory",
+          as: "subcategories",
+        },
+      },
+    ]);
+    return res.status(200).json({success: true,data:categoriesWithSubcategories});
+  } catch (error) {
+    console.error("❌ Error fetching categories:", error);
+    throw error;
+  }
+};
+
+
 module.exports = {
   addCategory,
   getCategories,
   getCategoryById,
   updateCategory,
   deleteCategory,
+  getCategoriesWithSubcategories,
 };

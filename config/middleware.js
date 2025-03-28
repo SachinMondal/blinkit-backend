@@ -1,9 +1,14 @@
 const jwt = require("jsonwebtoken");
 const User = require("../models/userModel");
 
-const roleBasedAccess = (allowedRoles) => {
+const roleBasedAccess = (allowedRoles = []) => {
   return async (req, res, next) => {
     try {
+      // ✅ Skip authentication if no roles are required (allow public access)
+      if (allowedRoles.length === 0) {
+        return next();
+      }
+
       const token = req.headers["authorization"]?.replace("Bearer ", "");
       if (!token) {
         return res.status(401).json({ success: false, message: "Token required" });

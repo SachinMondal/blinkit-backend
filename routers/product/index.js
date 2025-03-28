@@ -2,6 +2,8 @@ const express=require("express");
 const router=express.Router();
 const productController=require("../../controllers/productController");
 const Authnetication=require("../../config/middleware");
+
+router.get("/home",productController.getAllProductsWithCategory);
 router.post("/add",Authnetication(['admin']),productController.addProduct);
 
 router.get("/",Authnetication(['admin']), productController.getAllProduct);

@@ -1,6 +1,6 @@
 const Product=require("../models/productModel");
 const {uploadImage,deleteImage}=require("../utils/uploadImage");
-const cloudinary=require("../config/Cloudinary");
+const cloudinary = require("../config/cloudinary");
 const addProduct = async (req, res) => {
   try {
     console.log("Received Data:", req.fields);
@@ -183,6 +183,33 @@ const editProduct = async (req, res) => {
     }
   };
   
+  const getAllProductsWithCategory = async (req, res) => {
+    try {
+      const products = await Product.find({})
+        .populate('category', 'name _id') // Populate category name and ID
+        .lean(); // Convert to plain JavaScript objects
+  
+      // Group products by category
+      const groupedProducts = products.reduce((acc, product) => {
+        const categoryName = product.category?.name || "Uncategorized";
+        const categoryId = product.category?._id || "Unknown";
+  
+        if (!acc[categoryName]) {
+          acc[categoryName] = { categoryId, products: [] };
+        }
+  
+        acc[categoryName].products.push(product);
+  
+        return acc;
+      }, {});
+  
+      res.status(200).json({ success: true, categories: groupedProducts });
+    } catch (error) {
+      console.error('Error fetching products:', error);
+      res.status(500).json({ success: false, message: 'Internal server error' });
+    }
+  };
+
   module.exports = {
     addProduct,
     getAllProduct,
@@ -190,4 +217,5 @@ const editProduct = async (req, res) => {
     getProductByCategoryId,
     editProduct,
     deleteProduct,
+    getAllProductsWithCategory,
   };
