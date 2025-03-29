@@ -1,4 +1,5 @@
 const Product=require("../models/productModel");
+const Category=require("../models/categoryModel")
 const {uploadImage,deleteImage}=require("../utils/uploadImage");
 const cloudinary = require("../config/cloudinary");
 const addProduct = async (req, res) => {
@@ -156,9 +157,6 @@ const editProduct = async (req, res) => {
   }
 };
 
-
-  
-
   const deleteProduct = async (req, res) => {
     try {
       const product = await Product.findById(req.params.id);
@@ -185,30 +183,34 @@ const editProduct = async (req, res) => {
   
   const getAllProductsWithCategory = async (req, res) => {
     try {
-      const products = await Product.find({})
-        .populate('category', 'name _id') // Populate category name and ID
-        .lean(); // Convert to plain JavaScript objects
-  
+      const categories = await Category.find({}, "name _id").lean();
+      const products = await Product.find({}).populate("category", "name _id").lean(); 
+    
       // Group products by category
-      const groupedProducts = products.reduce((acc, product) => {
-        const categoryName = product.category?.name || "Uncategorized";
-        const categoryId = product.category?._id || "Unknown";
-  
-        if (!acc[categoryName]) {
-          acc[categoryName] = { categoryId, products: [] };
-        }
-  
-        acc[categoryName].products.push(product);
-  
+      const groupedProducts = categories.reduce((acc, category) => {
+        acc[category.name] = { categoryId: category._id, products: [] };
         return acc;
       }, {});
   
+      // Add products to their respective categories
+      products.forEach((product) => {
+        const categoryName = product.category?.name || "Uncategorized";
+        const categoryId = product.category?._id || "Unknown";
+  
+        if (!groupedProducts[categoryName]) {
+          groupedProducts[categoryName] = { categoryId, products: [] };
+        }
+  
+        groupedProducts[categoryName].products.push(product);
+      });
+  
       res.status(200).json({ success: true, categories: groupedProducts });
     } catch (error) {
-      console.error('Error fetching products:', error);
-      res.status(500).json({ success: false, message: 'Internal server error' });
+      console.error("Error fetching products:", error);
+      res.status(500).json({ success: false, message: "Internal server error" });
     }
   };
+  
 
   module.exports = {
     addProduct,

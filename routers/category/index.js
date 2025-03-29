@@ -3,6 +3,7 @@ const router = express.Router();
 const categoryController=require("../../controllers/categoryController");
 const Authentication=require("../../config/middleware");
 router.get('/get',categoryController.getCategoriesWithSubcategories);
+router.get('/subAndProd/:categoryId',categoryController.getSubcategoriesWithProducts);
 
 
 router.post("/add",Authentication(['admin']), categoryController.addCategory);

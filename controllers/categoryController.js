@@ -1,6 +1,7 @@
 const Category = require("../models/categoryModel");
 const {uploadImage} = require("../utils/uploadImage");
 const cloudinary = require("../config/cloudinary");
+const mongoose=require("mongoose");
 const addCategory = async (req, res) => {
   try {
     const { name, description, attributes, parentCategory } = req.fields;
@@ -148,6 +149,62 @@ const getCategoriesWithSubcategories = async (req,res) => {
   }
 };
 
+const getSubcategoriesWithProducts = async (req, res) => {
+  try {
+    const { categoryId } = req.params;
+
+    if (!categoryId) {
+      return res.status(400).json({ error: "categoryId is required" });
+    }
+
+    // MongoDB aggregation pipeline
+    const categoriesWithSubcategories = await Category.aggregate([
+      {
+        $match: { _id: new mongoose.Types.ObjectId(categoryId) }, // Find the main category
+      },
+      {
+        $lookup: {
+          from: "categories", // Lookup subcategories
+          localField: "_id",
+          foreignField: "parentCategory",
+          as: "subcategories",
+        },
+      },
+      {
+        $unwind: {
+          path: "$subcategories",
+          preserveNullAndEmptyArrays: true, // Keep parent category if no subcategories
+        },
+      },
+      {
+        $lookup: {
+          from: "products", // Lookup products for each subcategory
+          localField: "subcategories._id",
+          foreignField: "category",
+          as: "subcategories.products",
+        },
+      },
+      {
+        $group: {
+          _id: "$_id",
+          name: { $first: "$name" },
+          subcategories: { $push: "$subcategories" }, // Collect subcategories with products
+        },
+      },
+    ]);
+
+    // If no category is found, return an empty response
+    if (!categoriesWithSubcategories.length) {
+      return res.status(404).json({ message: "No subcategories found for this category." });
+    }
+
+    res.status(200).json(categoriesWithSubcategories[0]);
+  } catch (error) {
+    console.error("Error fetching subcategories and products:", error);
+    res.status(500).json({ error: "Internal Server Error" });
+  }
+};
+
 
 module.exports = {
   addCategory,
@@ -156,4 +213,5 @@ module.exports = {
   updateCategory,
   deleteCategory,
   getCategoriesWithSubcategories,
+  getSubcategoriesWithProducts,
 };

@@ -5,7 +5,7 @@ const router = express.Router();
 router.use("/auth", require("./auth"));
 router.use("/category", require("./category"));
 router.use("/product", require("./product"));
-// router.use("/chatbot",require("./chatbot"));
+router.use("/other",require("./others"));
 // router.use("/automation",require("./people"));
 // router.use("/wallet",require("./wallet"));
 // router.use('/payment',require("./payment"))
