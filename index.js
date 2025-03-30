@@ -1,8 +1,9 @@
 const express = require("express");
 const cors = require("cors");
+const formidable = require("express-formidable");
+
 const app = express();
 const port = 8000;
-const formidable = require("express-formidable");
 
 // Import other necessary modules
 const passport = require("passport");
@@ -15,17 +16,25 @@ app.use(cors({
   allowedHeaders: ["Content-Type", "Authorization"]
 }));
 
-app.use(express.json());
-app.use(
-  formidable({
-    multiples: true, // If you want to allow multiple files
-    keepExtensions: true, // Keeps file extensions
-  })
-);
+// Ensure JSON and URL-encoded body parsing happens before formidable
+app.use(express.json()); 
 app.use(express.urlencoded({ extended: true }));
 
-// Use routes
-app.use("/api/", require("./routers"));
+// Use formidable only for file upload routes
+const formidableMiddleware = formidable({
+  multiples: true,
+  keepExtensions: true,
+});
+
+// Routes
+const router = require("./routers");
+app.use("/api/", (req, res, next) => {
+  if (req.headers["content-type"]?.includes("multipart/form-data")) {
+    formidableMiddleware(req, res, next);
+  } else {
+    express.json()(req, res, next);
+  }
+}, router);
 
 app.listen(port, function (err) {
     if (err) {
