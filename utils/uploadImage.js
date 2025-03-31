@@ -1,4 +1,4 @@
-const cloudinary = require("../config/cloudinary");
+const cloudinary = require("../config/Cloudinary");
 
 // Function to upload image to Cloudinary
 const uploadImage = async (imagePath) => {

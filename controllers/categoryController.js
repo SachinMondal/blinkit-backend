@@ -1,6 +1,6 @@
 const Category = require("../models/categoryModel");
 const {uploadImage}=require("../utils/uploadImage");
-const cloudinary = require("../config/cloudinary");
+const cloudinary = require("../config/Cloudinary");
 const mongoose=require("mongoose");
 const addCategory = async (req, res) => {
   try {
