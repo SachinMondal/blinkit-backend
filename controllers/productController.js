@@ -1,7 +1,7 @@
 const Product=require("../models/productModel");
 const Category=require("../models/categoryModel")
 const {uploadImage,deleteImage}=require("../utils/uploadImage");
-const cloudinary = require("../config/cloudinary");
+const cloudinary = require("../config/Cloudinary");
 const addProduct = async (req, res) => {
   try {
     console.log("Received Data:", req.fields);
