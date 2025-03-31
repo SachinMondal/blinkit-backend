@@ -7,6 +7,6 @@ router.use("/category", require("./category"));
 router.use("/product", require("./product"));
 router.use("/other",require("./others"));
 router.use("/cart",require("./cart"));
-// router.use("/wallet",require("./wallet"));
-// router.use('/payment',require("./payment"))
+router.use("/address",require("./address"));
+router.use('/order',require("./order"))
 module.exports = router;

@@ -1,12 +1,12 @@
 const Cart = require("../models/cartModel");
 const Product = require("../models/productModel");
+
 const addToCart = async (req, res) => {
     const userId = req.user._id;
     try {
         const { productId, variantIndex, quantity,count } = req.body;
-        console.log(req.body);
 
-        if (!userId || !productId || variantIndex === undefined || !quantity) {
+        if (!productId || variantIndex === undefined || !quantity) {
             return res.status(400).json({ message: "Missing required fields" });
         }
 
@@ -81,6 +81,7 @@ const updateCartItem = async (req, res) => {
     const userId = req.user._id;
     try {
         const { productId, variantIndex, newQuantity } = req.body;
+    
 
         if (!userId || !productId || variantIndex === undefined || newQuantity === undefined) {
             return res.status(400).json({ message: "Missing required fields" });
@@ -148,22 +149,36 @@ const getCart = async (req, res) => {
 
 // Remove item from cart
 const removeFromCart = async (req, res) => {
-    const userId = req.user._id;
     try {
-        const {productId } = req.body;
+        const { productId } = req.params;
+        const userId = req.user._id;
+
         let cart = await Cart.findOne({ user: userId });
         if (!cart) return res.status(404).json({ message: "Cart not found" });
 
-        cart.cartItems = cart.cartItems.filter(item => !item.productId.equals(productId));
+        // Remove item from cart
+        cart.cartItems = cart.cartItems.filter(item => item.productId.toString() !== productId);
+
+        if (cart.cartItems.length === 0) {
+            // If cart is empty, delete it from the database
+            await Cart.deleteOne({ user: userId });
+            return res.status(200).json({ success: true, message: "Cart deleted" });
+        }
+
+        // Recalculate totals
         cart.totalItem = cart.cartItems.length;
         cart.totalQuantity = cart.cartItems.reduce((acc, item) => acc + item.quantity, 0);
         cart.totalPrice = cart.cartItems.reduce((acc, item) => acc + item.quantity * item.price, 0);
+
         await cart.save();
-        res.status(200).json(cart);
+        res.status(200).json({ success: true, message: "Item removed", cart });
+
     } catch (err) {
-        res.status(500).json({ message: err.message });
+        res.status(500).json({ success: false, message: err.message });
     }
 };
+
+
 
 // Empty cart after checkout
 const emptyCart = async (req, res) => {
