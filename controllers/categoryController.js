@@ -4,16 +4,37 @@ const cloudinary = require("../config/Cloudinary");
 const mongoose=require("mongoose");
 const addCategory = async (req, res) => {
   try {
-    const { name, description, attributes, parentCategory } = req.fields;
+    const {
+      name,
+      description,
+      attributes,
+      parentCategory,
+      tags,
+      discountPercentage,
+      status,
+      seoTitle,
+      seoDescription,
+      isVisible,
+      isHomePageVisible,
+      isSpecial,
+      isNew,
+      isSale,
+      isFeatured,
+      isBestseller
+    } = req.fields;
+    console.log(req.fields);
+
     let imageUrl = "";
 
-    // Check if an image is provided
-    if (req.files.image) {
+    if (req.files && req.files.image) {
       imageUrl = await uploadImage(req.files.image.path);
     }
 
-    // Determine if this category is a parent
-    let isParent = !parentCategory;
+    
+    const tagsArray = tags ? tags.split(",").map(tag => tag.trim()).filter(tag => tag.length > 0) : [];
+
+   
+    const parseBoolean = (value) => !!(value && (value === "on" || value === "true" || value === true));
 
     // Create new category
     const newCategory = new Category({
@@ -22,17 +43,32 @@ const addCategory = async (req, res) => {
       image: imageUrl,
       attributes,
       parentCategory,
-      isParent,
+      isParent: !parentCategory,
+      tags: tagsArray,
+      discountPercentage: discountPercentage ? Number(discountPercentage) : 0,
+      status: status || "active",
+      seoTitle: seoTitle && seoTitle.trim() !== "" ? seoTitle.trim() : `${name} - Best ${name} Category`,
+      seoDescription: seoDescription && seoDescription.trim() !== "" 
+        ? seoDescription.trim() 
+        : description 
+          ? description.substring(0, 150) 
+          : `Explore the best ${name} products and services.`,
+      isVisible: parseBoolean(isVisible),
+      isHomePageVisible: parseBoolean(isHomePageVisible),
+      isSpecial: parseBoolean(isSpecial),
+      isNew: parseBoolean(isNew),
+      isSale: parseBoolean(isSale),
+      isFeatured: parseBoolean(isFeatured),
+      isBestseller: parseBoolean(isBestseller)
     });
 
     await newCategory.save();
-    res
-      .status(201)
-      .json({ message: "Category added successfully", newCategory });
+    res.status(201).json({ message: "Category added successfully", newCategory });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
 };
+
 
 const getCategories = async (req, res) => {
   try {
@@ -62,30 +98,61 @@ const getCategoryById = async (req, res) => {
 const updateCategory = async (req, res) => {
   try {
     const { id } = req.params;
-    const { name, description, attributes, seoTitle, seoDescription, isVisible, parentCategory } = req.fields;
+    const {
+      name,
+      description,
+      attributes,
+      parentCategory,
+      tags,
+      discountPercentage,
+      status,
+      seoTitle,
+      seoDescription,
+      isVisible,
+      isHomePageVisible,
+      isSpecial,
+      isNew,
+      isSale,
+      isFeatured,
+      isBestseller
+    } = req.fields;
+
     let imageUrl = "";
 
-    // Check if an image is provided
     if (req.files?.image) {
       imageUrl = await uploadImage(req.files.image.path);
     }
 
-    // Determine if this category is a parent
+    const tagsArray = tags ? tags.split(",").map(tag => tag.trim()).filter(tag => tag.length > 0) : [];
+
+    const parseBoolean = (value) => !!(value && (value === "on" || value === "true" || value === true));
+
     let isParent = !parentCategory;
 
-    // Find and update the category
     const updatedCategory = await Category.findByIdAndUpdate(
       id,
       {
         name,
         description,
         attributes,
-        seoTitle,
-        seoDescription,
-        isVisible,
-        parentCategory,
         isParent,
-        ...(imageUrl && { image: imageUrl }), // Only update image if new image is provided
+        tags: tagsArray,
+        discountPercentage: discountPercentage ? Number(discountPercentage) : 0,
+        status: status || "active",
+        seoTitle: seoTitle && seoTitle.trim() !== "" ? seoTitle.trim() : `${name} - Best ${name} Category`,
+        seoDescription: seoDescription && seoDescription.trim() !== "" 
+          ? seoDescription.trim() 
+          : description 
+            ? description.substring(0, 150) 
+            : `Explore the best ${name} products and services.`,
+        isVisible: parseBoolean(isVisible),
+        isHomePageVisible: parseBoolean(isHomePageVisible),
+        isSpecial: parseBoolean(isSpecial),
+        isNew: parseBoolean(isNew),
+        isSale: parseBoolean(isSale),
+        isFeatured: parseBoolean(isFeatured),
+        isBestseller: parseBoolean(isBestseller),
+        ...(imageUrl && { image: imageUrl })
       },
       { new: true, runValidators: true }
     );
