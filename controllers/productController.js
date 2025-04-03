@@ -134,19 +134,12 @@ const getProductByCategoryId=async(req,res)=>{
 }
 const editProduct = async (req, res) => {
   try {
-    const { quantities, details, ...updatedFields } = req.fields; // Extract fields
-
-    console.log("Incoming Fields:", req.fields);
-
-    // 🛠 Find the existing product
+    const { quantities, details, ...updatedFields } = req.fields;
     const existingProduct = await Product.findById(req.params.id);
     if (!existingProduct) {
       return res.status(404).json({ message: "Product not found!" });
     }
-
     let imageUrl = existingProduct.image;
-
-    // 🔹 Handle Image Update (only if a new image is uploaded)
     if (req.files && req.files.image) {
       if (existingProduct.image) {
         try {
@@ -157,8 +150,6 @@ const editProduct = async (req, res) => {
       }
       imageUrl = await uploadImage(req.files.image.path);
     }
-
-    // 🔹 Parse and update details (only if provided)
     let newDetails = existingProduct.details;
     if (details) {
       try {
@@ -167,8 +158,6 @@ const editProduct = async (req, res) => {
         return res.status(400).json({ message: "Invalid details format" });
       }
     }
-
-    // 🔹 Parse and update variants (only if provided)
     let newVariants = [];
     if (quantities) {
       try {
@@ -177,35 +166,22 @@ const editProduct = async (req, res) => {
         return res.status(400).json({ message: "Invalid variants format" });
       }
     }
-
-    // 🔹 Update only changed fields
     Object.keys(updatedFields).forEach((key) => {
       if (updatedFields[key] !== undefined && updatedFields[key] !== existingProduct[key]) {
         existingProduct[key] = updatedFields[key];
       }
     });
-
-    // Update image only if it has changed
     if (imageUrl !== existingProduct.image) {
       existingProduct.image = imageUrl;
     }
-
-    // Update details only if changed
     if (JSON.stringify(newDetails) !== JSON.stringify(existingProduct.details)) {
       existingProduct.details = newDetails;
     }
-
     await existingProduct.save();
-
-    // 🔹 Handle Variants (Only if changed)
     if (newVariants.length > 0) {
-      // 🗑 Delete old variants only if they are different
       const existingVariants = await Variant.find({ product: existingProduct._id });
-
       if (JSON.stringify(existingVariants) !== JSON.stringify(newVariants)) {
         await Variant.deleteMany({ product: existingProduct._id });
-
-        // 🔄 Insert new variants
         const variantDocs = newVariants.map((variant) => ({
           product: existingProduct._id,
           qty: variant.qty,
@@ -213,10 +189,7 @@ const editProduct = async (req, res) => {
           price: variant.price,
           discountPrice: variant.discountPrice,
         }));
-
         const createdVariants = await Variant.insertMany(variantDocs);
-
-        // 🔄 Update Product with new Variant IDs
         existingProduct.variants = createdVariants.map((variant) => variant._id);
         await existingProduct.save();
       }
@@ -237,16 +210,10 @@ const editProduct = async (req, res) => {
       if (!product) {
         return res.status(404).json({ message: "Product not found" });
       }
-  
-      // 🔹 Extract Cloudinary Public ID from the image URL
       if (product.image) {
-        const publicId = product.image.split("/").pop().split(".")[0]; // Extract Cloudinary ID
-  
-        // 🔥 Delete Image from Cloudinary
+        const publicId = product.image.split("/").pop().split(".")[0];
         await cloudinary.uploader.destroy(publicId);
       }
-  
-      // 🔥 Delete the product from the database
       await Product.findByIdAndDelete(req.params.id);
       res.status(200).json({ message: "Product deleted successfully" });
     } catch (error) {
@@ -257,25 +224,40 @@ const editProduct = async (req, res) => {
   
   const getAllProductsWithCategory = async (req, res) => {
     try {
-      const categories = await Category.find({}, "name _id").lean();
-      const products = await Product.find({}).populate("category", "name _id").lean(); 
-    
-      // Group products by category
+      const categories = await Category.find({}, "name _id isParent isVisible isHomePageVisible isSpecial isNew isSale isFeatured").lean();
+      const products = await Product.find({})
+        .populate("category", "name _id isParent isVisible isHomePageVisible isSpecial isNew isSale isFeatured")
+        .populate("variants")
+        .lean();
+  
+   
+  
+      
       const groupedProducts = categories.reduce((acc, category) => {
-        acc[category.name] = { categoryId: category._id, products: [] };
+        acc[category.name] = {
+          categoryId: category._id,
+          categoryDetails: {
+            isParent: category.isParent,
+            isVisible: category.isVisible,
+            isHomePageVisible: category.isHomePageVisible,
+            isSpecial: category.isSpecial,
+            isNew: category.isNew,
+            isSale: category.isSale,
+            isFeatured: category.isFeatured,
+            name: category.name,
+            _id: category._id,
+          },
+          products: [],
+        };
         return acc;
       }, {});
   
-      // Add products to their respective categories
+      
       products.forEach((product) => {
-        const categoryName = product.category?.name || "Uncategorized";
-        const categoryId = product.category?._id || "Unknown";
-  
-        if (!groupedProducts[categoryName]) {
-          groupedProducts[categoryName] = { categoryId, products: [] };
+        const category = product.category;
+        if (category && groupedProducts[category.name]) {
+          groupedProducts[category.name].products.push(product);
         }
-  
-        groupedProducts[categoryName].products.push(product);
       });
   
       res.status(200).json({ success: true, categories: groupedProducts });
@@ -284,6 +266,7 @@ const editProduct = async (req, res) => {
       res.status(500).json({ success: false, message: "Internal server error" });
     }
   };
+  
   
 
   module.exports = {

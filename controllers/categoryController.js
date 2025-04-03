@@ -1,4 +1,5 @@
 const Category = require("../models/categoryModel");
+const Product=require("../models/productModel")
 const {uploadImage}=require("../utils/uploadImage");
 const cloudinary = require("../config/Cloudinary");
 const mongoose=require("mongoose");
@@ -216,61 +217,81 @@ const getCategoriesWithSubcategories = async (req,res) => {
   }
 };
 
+
+
 const getSubcategoriesWithProducts = async (req, res) => {
   try {
     const { categoryId } = req.params;
-
-    if (!categoryId) {
-      return res.status(400).json({ error: "categoryId is required" });
+    if (!categoryId || !mongoose.Types.ObjectId.isValid(categoryId)) {
+      return res.status(400).json({ error: "Invalid categoryId" });
     }
 
-    // MongoDB aggregation pipeline
-    const categoriesWithSubcategories = await Category.aggregate([
-      {
-        $match: { _id: new mongoose.Types.ObjectId(categoryId) }, // Find the main category
-      },
-      {
-        $lookup: {
-          from: "categories", // Lookup subcategories
-          localField: "_id",
-          foreignField: "parentCategory",
-          as: "subcategories",
-        },
-      },
-      {
-        $unwind: {
-          path: "$subcategories",
-          preserveNullAndEmptyArrays: true, // Keep parent category if no subcategories
-        },
-      },
-      {
-        $lookup: {
-          from: "products", // Lookup products for each subcategory
-          localField: "subcategories._id",
-          foreignField: "category",
-          as: "subcategories.products",
-        },
-      },
-      {
-        $group: {
-          _id: "$_id",
-          name: { $first: "$name" },
-          subcategories: { $push: "$subcategories" }, // Collect subcategories with products
-        },
-      },
-    ]);
+    const categoryObjectId = new mongoose.Types.ObjectId(categoryId);
 
-    // If no category is found, return an empty response
-    if (!categoriesWithSubcategories.length) {
-      return res.status(404).json({ message: "No subcategories found for this category." });
+    // Find the category details
+    const category = await Category.findById(categoryObjectId).lean();
+    if (!category) {
+      return res.status(404).json({ error: "Category not found" });
     }
 
-    res.status(200).json(categoriesWithSubcategories[0]);
+    // Check if the category is a parent or a subcategory
+    const isSubcategory = !!category.parentCategory; // If parentCategory exists, it's a subcategory
+
+    // Fetch products directly under this category
+    const categoryProducts = await Product.find({ category: categoryObjectId })
+      .populate("variants")
+      .lean();
+
+    // Fetch all subcategories for the category
+    const subcategories = await Category.find({ parentCategory: categoryObjectId }).lean();
+    const subcategoryIds = subcategories.map((sub) => sub._id);
+
+    // Fetch products for each subcategory
+    const subcategoryProducts = await Product.find({ category: { $in: subcategoryIds } })
+      .populate("variants")
+      .lean();
+
+    // Combine subcategories with their respective products
+    let subcategoriesWithProducts = subcategories.map((subcategory) => ({
+      _id: subcategory._id,
+      name: subcategory.name,
+      image: subcategory.image || "",
+      products: subcategoryProducts.filter((product) => product.category.toString() === subcategory._id.toString()),
+    }));
+
+    // If the given category is itself a subcategory and has products, include it in the response
+    if (isSubcategory) {
+      subcategoriesWithProducts = [
+        {
+          _id: category._id,
+          name: category.name,
+          image: category.image || "",
+          products: categoryProducts,
+        },
+      ];
+    } else if (categoryProducts.length > 0 && subcategoriesWithProducts.length === 0) {
+      // If the category has no subcategories but has products, include it in the response
+      subcategoriesWithProducts = [
+        {
+          _id: category._id,
+          name: category.name,
+          image: category.image || "",
+          products: categoryProducts,
+        },
+      ];
+    }
+
+    res.status(200).json({
+      name: category.name,
+      subcategories: subcategoriesWithProducts,
+    });
   } catch (error) {
-    console.error("Error fetching subcategories and products:", error);
+    console.error("Error fetching products and subcategories:", error);
     res.status(500).json({ error: "Internal Server Error" });
   }
 };
+
+
 
 
 module.exports = {
