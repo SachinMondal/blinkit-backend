@@ -4,7 +4,6 @@ const cartController=require("../../controllers/cartController");
 const Authentication=require("../../config/middleware");
 router.get("/",  Authentication(["user","admin"]),cartController.getCart);
 router.post("/addToCart", Authentication(["user","admin"]),cartController.addToCart);
-router.put("/update",  Authentication(["user","admin"]),cartController.updateCartItem);
-router.delete("/remove/:productId", Authentication(["user","admin"]), cartController.removeFromCart);
+router.post("/remove", Authentication(["user","admin"]), cartController.removeFromCart);
 router.delete("/clear",  Authentication(["user","admin"]),cartController.emptyCart);
 module.exports=router;

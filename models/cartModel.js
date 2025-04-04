@@ -9,18 +9,8 @@ const CartSchema = new mongoose.Schema(
     },
     cartItems: [
       {
-        productId: { type: mongoose.Schema.Types.ObjectId, ref: "Product", required: true },
-        variantIndex: { type: Number, required: true }, // Store the selected variant index
-        variantDetails: {
-          qty: { type: String, required: true },
-          unit: { type: String, required: true },
-          price: { type: Number, required: true },
-          discountPrice: { type: Number, required: true },
-        },
-        quantity: { type: Number, required: true, min: 1 },
-        subtotalPrice: { type: Number, required: true }, // (quantity * price)
-        subtotalDiscountedPrice: { type: Number, required: true }, // (quantity * discountPrice)
-        discountAmount: { type: Number, required: true }, // subtotalPrice - subtotalDiscountedPrice
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "CartItem",
       },
     ],
     totalCartSize: {
