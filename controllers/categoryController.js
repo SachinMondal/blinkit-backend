@@ -18,12 +18,12 @@ const addCategory = async (req, res) => {
       isVisible,
       isHomePageVisible,
       isSpecial,
-      isNew,
+      newArrivals,
       isSale,
       isFeatured,
       isBestseller
     } = req.fields;
-    console.log(req.fields);
+
 
     let imageUrl = "";
 
@@ -57,7 +57,7 @@ const addCategory = async (req, res) => {
       isVisible: parseBoolean(isVisible),
       isHomePageVisible: parseBoolean(isHomePageVisible),
       isSpecial: parseBoolean(isSpecial),
-      isNew: parseBoolean(isNew),
+      newArrivals: parseBoolean(newArrivals),
       isSale: parseBoolean(isSale),
       isFeatured: parseBoolean(isFeatured),
       isBestseller: parseBoolean(isBestseller)
@@ -76,7 +76,6 @@ const getCategories = async (req, res) => {
     const categories = await Category.find().populate("parentCategory", "name");
     res.status(200).json({success:true,data:categories});
   } catch (error) {
-    console.log(error.stack);
     res.status(500).json({ message: "Error fetching categories", error });
   }
 };
@@ -112,7 +111,7 @@ const updateCategory = async (req, res) => {
       isVisible,
       isHomePageVisible,
       isSpecial,
-      isNew,
+      newArrivals,
       isSale,
       isFeatured,
       isBestseller
@@ -149,7 +148,7 @@ const updateCategory = async (req, res) => {
         isVisible: parseBoolean(isVisible),
         isHomePageVisible: parseBoolean(isHomePageVisible),
         isSpecial: parseBoolean(isSpecial),
-        isNew: parseBoolean(isNew),
+        newArrivals: parseBoolean(newArrivals),
         isSale: parseBoolean(isSale),
         isFeatured: parseBoolean(isFeatured),
         isBestseller: parseBoolean(isBestseller),
@@ -222,75 +221,61 @@ const getCategoriesWithSubcategories = async (req,res) => {
 const getSubcategoriesWithProducts = async (req, res) => {
   try {
     const { categoryId } = req.params;
-    if (!categoryId || !mongoose.Types.ObjectId.isValid(categoryId)) {
-      return res.status(400).json({ error: "Invalid categoryId" });
-    }
-
     const categoryObjectId = new mongoose.Types.ObjectId(categoryId);
 
-    // Find the category details
+    // Find the category
     const category = await Category.findById(categoryObjectId).lean();
     if (!category) {
       return res.status(404).json({ error: "Category not found" });
     }
 
-    // Check if the category is a parent or a subcategory
-    const isSubcategory = !!category.parentCategory; // If parentCategory exists, it's a subcategory
-
-    // Fetch products directly under this category
+    // Fetch products directly under the main category
     const categoryProducts = await Product.find({ category: categoryObjectId })
       .populate("variants")
       .lean();
 
-    // Fetch all subcategories for the category
+    // Fetch all subcategories
     const subcategories = await Category.find({ parentCategory: categoryObjectId }).lean();
+
     const subcategoryIds = subcategories.map((sub) => sub._id);
 
-    // Fetch products for each subcategory
-    const subcategoryProducts = await Product.find({ category: { $in: subcategoryIds } })
+    // Fetch products for all subcategories
+    const subcategoryProducts = await Product.find({
+      category: { $in: subcategoryIds },
+    })
       .populate("variants")
       .lean();
 
-    // Combine subcategories with their respective products
-    let subcategoriesWithProducts = subcategories.map((subcategory) => ({
-      _id: subcategory._id,
-      name: subcategory.name,
-      image: subcategory.image || "",
-      products: subcategoryProducts.filter((product) => product.category.toString() === subcategory._id.toString()),
+    // Map each subcategory to its products
+    const subcategoriesWithProducts = subcategories.map((sub) => ({
+      _id: sub._id,
+      name: sub.name,
+      image: sub.image || "",
+      products: subcategoryProducts.filter(
+        (product) => product.category.toString() === sub._id.toString()
+      ),
     }));
 
-    // If the given category is itself a subcategory and has products, include it in the response
-    if (isSubcategory) {
-      subcategoriesWithProducts = [
-        {
-          _id: category._id,
-          name: category.name,
-          image: category.image || "",
-          products: categoryProducts,
-        },
-      ];
-    } else if (categoryProducts.length > 0 && subcategoriesWithProducts.length === 0) {
-      // If the category has no subcategories but has products, include it in the response
-      subcategoriesWithProducts = [
-        {
-          _id: category._id,
-          name: category.name,
-          image: category.image || "",
-          products: categoryProducts,
-        },
-      ];
-    }
+    // Combine parent category with its products at the top
+    const combinedResponse = [
+      {
+        _id: category._id,
+        name: category.name,
+        image: category.image || "",
+        products: categoryProducts,
+      },
+      ...subcategoriesWithProducts,
+    ];
 
     res.status(200).json({
       name: category.name,
-      subcategories: subcategoriesWithProducts,
+      subcategories: combinedResponse,
     });
   } catch (error) {
     console.error("Error fetching products and subcategories:", error);
     res.status(500).json({ error: "Internal Server Error" });
   }
 };
-
 
 
 

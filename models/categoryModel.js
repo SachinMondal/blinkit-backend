@@ -56,7 +56,7 @@ const categorySchema = new mongoose.Schema(
       type: Boolean,
       default: false
     },
-    isNew: {
+    newArrivals: {
       type: Boolean,
       default: false
     },

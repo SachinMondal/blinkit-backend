@@ -4,7 +4,9 @@ const productController=require("../../controllers/productController");
 const Authnetication=require("../../config/middleware");
 
 router.get("/home",productController.getAllProductsWithCategory);
+router.get("/search", productController.searchProducts);
 router.get("/:id", productController.getProductById);
+
 router.post("/add",Authnetication(['admin']),productController.addProduct);
 
 router.get("/",Authnetication(['admin']), productController.getAllProduct);

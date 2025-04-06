@@ -36,9 +36,6 @@ const addProduct = async (req, res) => {
 
     const parsedQuantities = typeof quantities === "string" ? JSON.parse(quantities) : quantities || [];
     const parsedDetails = typeof details === "string" ? JSON.parse(details) : details || [];
-
-
-    // 🔹 Step 4: Create Product Document
     const newProduct = new Product({
       category,
       categoryName,
@@ -62,10 +59,7 @@ const addProduct = async (req, res) => {
       details: parsedDetails,
     });
 
-    // 🔹 Step 5: Save Product
     await newProduct.save();
-
-    // 🔹 Step 6: Create and Save Variants (if any)
     let createdVariants = [];
     if (parsedQuantities.length > 0) {
       const variantDocs = parsedQuantities.map(variant => ({
@@ -75,10 +69,7 @@ const addProduct = async (req, res) => {
         price: variant.price,
         discountPrice: variant.discountPrice,
       }));
-
       createdVariants = await Variant.insertMany(variantDocs);
-
-      // 🔹 Step 7: Link Variants to Product
       newProduct.variants = createdVariants.map(variant => variant._id);
       await newProduct.save();
     }
@@ -139,8 +130,9 @@ const editProduct = async (req, res) => {
     if (!existingProduct) {
       return res.status(404).json({ message: "Product not found!" });
     }
+    
     let imageUrl = existingProduct.image;
-    if (req.files && req.files.image) {
+    if (req.files && req.files.imageFile) {
       if (existingProduct.image) {
         try {
           await deleteImage(existingProduct.image);
@@ -148,7 +140,7 @@ const editProduct = async (req, res) => {
           console.error("Error deleting existing image:", error);
         }
       }
-      imageUrl = await uploadImage(req.files.image.path);
+      imageUrl = await uploadImage(req.files.imageFile.path);
     }
     let newDetails = existingProduct.details;
     if (details) {
@@ -201,8 +193,6 @@ const editProduct = async (req, res) => {
     res.status(500).json({ message: error.message });
   }
 };
-
-
 
   const deleteProduct = async (req, res) => {
     try {
@@ -268,6 +258,28 @@ const editProduct = async (req, res) => {
   };
   
   
+  const searchProducts = async (req, res) => {
+    try {
+      const query = req.query.q;
+  
+      if (!query || query.trim() === "") {
+        return res.status(400).json({ message: "Please provide a search query" });
+      }
+  
+      const regex = new RegExp(query, "i"); 
+      const products = await Product.find({ name: regex });
+      res.status(200).json({
+        success: true,
+        data: products,
+        message: products.length > 0 ? "Products found" : "No products found",
+      });
+
+    } catch (error) {
+      console.error("Error searching products:", error);
+      res.status(500).json({ message: "Server Error", error: error.message });
+    }
+  };
+  
 
   module.exports = {
     addProduct,
@@ -277,4 +289,5 @@ const editProduct = async (req, res) => {
     editProduct,
     deleteProduct,
     getAllProductsWithCategory,
+    searchProducts,
   };

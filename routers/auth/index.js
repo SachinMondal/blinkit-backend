@@ -6,5 +6,6 @@ router.post("/send-otp",userController.sendOTP);
 router.post("/verify-otp",userController.verifyOTP);
 router.put("/update",Authentication(['user','admin']),userController.updateUser);
 router.get("/info",Authentication(['user','admin']),userController.updateUser);
-
+router.get("/all-users",Authentication(['admin']),userController.getAllUser);
+router.put("/updateRole",Authentication(['admin']),userController.updateUserRole);
 module.exports=router;
