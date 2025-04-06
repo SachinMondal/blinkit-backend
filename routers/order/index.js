@@ -1,8 +1,6 @@
 const express = require("express");
 const {
     createNewOrder,
-    getAllOrders,
-    getOrderByStatus,
     updateOrder,
     deleteOrder,
     getUserOrders,
@@ -14,8 +12,6 @@ const Authentication = require("../../config/middleware");
 const router = express.Router();
 
 router.post("/", Authentication(["user","admin"]), createNewOrder); 
-router.get("/", Authentication(["user","admin"]), getAllOrders); 
-router.get("/status/:status", Authentication(["user","admin"]), getOrderByStatus); 
 router.get("/my-orders", Authentication(["user","admin"]), getUserOrders); 
 router.put("/:orderId", Authentication(["admin"]), updateOrder); 
 router.delete("/:orderId", Authentication(["admin"]), deleteOrder); 
