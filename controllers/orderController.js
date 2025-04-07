@@ -216,7 +216,7 @@ const getOrderById = async (req, res) => {
     const { orderId } = req.params;
 
     const order = await Order.findById(orderId)
-      .populate("user", "name mobileNo")
+      .populate("user", "name mobileNo location locationPin")
       .populate("shippingAddress")
       .populate({
         path: "orderItems",

@@ -1,6 +1,7 @@
 const User=require("../models/userModel");
 const crypto = require("crypto");
 const jwt = require("jsonwebtoken");
+const { sendOtpEmail } = require("../utils/mailHandler");
 
 
 
@@ -27,13 +28,7 @@ const sendOTP = async (req, res) => {
     if(!user){
         user=await User.create({ email: email });
     }
-    // Send OTP via email
-    // await transporter.sendMail({
-    //   from: process.env.EMAIL_USER,
-    //   to: email,
-    //   subject: "Your OTP Code",
-    //   text: `Your OTP is ${otp}. It will expire in 30 seconds.`,
-    // });
+    await sendOtpEmail(email,otp);
 
     return res.status(200).json({ message: "OTP sent successfully"+otp });
   } catch (error) {
@@ -114,4 +109,41 @@ const updateUserRole=async(req,res)=>{
     return res.status(500).json({ message: "Error updating user role", error });
   }
 }
-module.exports = { sendOTP, verifyOTP,updateUser,getAllUser,updateUserRole };
+
+const saveLocation = async (req, res) => {
+  const userId = req.user._id;
+  const { location, lat, lng } = req.body;
+
+  try {
+    const updatedUser = await User.findByIdAndUpdate(
+      userId,
+      {
+        location: location,
+        locationPin: {
+          type: "Point",
+          coordinates: [lng, lat],
+        },
+      },
+      { new: true }
+    );
+    res.status(200).json({ success: true, user: updatedUser });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+
+const loggedInUser=async(req,res)=>{
+  const userId=req.userId;
+  try{
+    const user=await User.findOne(userId);
+    if(!user){
+      return res.status(404).json({ message: "User not found" });
+    }
+    return res.status(200).json({ message: "User fetched successfully", user });
+  }catch(error){
+    
+    return res.status(500).json({ message: "Error fetching user", error });
+  }
+}
+module.exports = { sendOTP, verifyOTP,updateUser,getAllUser,updateUserRole,saveLocation,loggedInUser };
