@@ -125,12 +125,12 @@ const getProductByCategoryId=async(req,res)=>{
 }
 const editProduct = async (req, res) => {
   try {
-    const { quantities, details, ...updatedFields } = req.fields;
+    const { quantities, details, variants, ...updatedFields } = req.fields;
     const existingProduct = await Product.findById(req.params.id);
     if (!existingProduct) {
       return res.status(404).json({ message: "Product not found!" });
     }
-    
+
     let imageUrl = existingProduct.image;
     if (req.files && req.files.imageFile) {
       if (existingProduct.image) {
@@ -142,6 +142,8 @@ const editProduct = async (req, res) => {
       }
       imageUrl = await uploadImage(req.files.imageFile.path);
     }
+
+    // Parse details if present
     let newDetails = existingProduct.details;
     if (details) {
       try {
@@ -150,41 +152,59 @@ const editProduct = async (req, res) => {
         return res.status(400).json({ message: "Invalid details format" });
       }
     }
-    let newVariants = [];
+
+    // Parse quantities if present
+    let newQuantities = [];
     if (quantities) {
       try {
-        newVariants = JSON.parse(quantities);
+        newQuantities = JSON.parse(quantities);
+      } catch (error) {
+        return res.status(400).json({ message: "Invalid quantities format" });
+      }
+    }
+
+    // Parse variants if present
+    let newVariants = [];
+    if (variants) {
+      try {
+        newVariants = JSON.parse(variants);
       } catch (error) {
         return res.status(400).json({ message: "Invalid variants format" });
       }
     }
+
+    // Update basic fields
     Object.keys(updatedFields).forEach((key) => {
       if (updatedFields[key] !== undefined && updatedFields[key] !== existingProduct[key]) {
         existingProduct[key] = updatedFields[key];
       }
     });
+
     if (imageUrl !== existingProduct.image) {
       existingProduct.image = imageUrl;
     }
+
     if (JSON.stringify(newDetails) !== JSON.stringify(existingProduct.details)) {
       existingProduct.details = newDetails;
     }
+
     await existingProduct.save();
+
+    // Update variants (related model)
     if (newVariants.length > 0) {
-      const existingVariants = await Variant.find({ product: existingProduct._id });
-      if (JSON.stringify(existingVariants) !== JSON.stringify(newVariants)) {
-        await Variant.deleteMany({ product: existingProduct._id });
-        const variantDocs = newVariants.map((variant) => ({
-          product: existingProduct._id,
-          qty: variant.qty,
-          unit: variant.unit,
-          price: variant.price,
-          discountPrice: variant.discountPrice,
-        }));
-        const createdVariants = await Variant.insertMany(variantDocs);
-        existingProduct.variants = createdVariants.map((variant) => variant._id);
-        await existingProduct.save();
-      }
+      await Variant.deleteMany({ product: existingProduct._id });
+
+      const variantDocs = newVariants.map((variant) => ({
+        product: existingProduct._id,
+        qty: variant.qty,
+        unit: variant.unit,
+        price: variant.price,
+        discountPrice: variant.discountPrice,
+      }));
+
+      const createdVariants = await Variant.insertMany(variantDocs);
+      existingProduct.variants = createdVariants.map((variant) => variant._id);
+      await existingProduct.save();
     }
 
     res.json({ message: "Product updated successfully", updatedProduct: existingProduct });
@@ -193,6 +213,7 @@ const editProduct = async (req, res) => {
     res.status(500).json({ message: error.message });
   }
 };
+
 
   const deleteProduct = async (req, res) => {
     try {
