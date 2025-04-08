@@ -86,8 +86,6 @@ const addProduct = async (req, res) => {
   }
 };
 
-
-
 const getAllProduct=async (req,res)=>{
     try{
         const products=await Product.find().populate("category","name");
@@ -123,6 +121,7 @@ const getProductByCategoryId=async(req,res)=>{
         res.status(500).json({message:error.message});
     }
 }
+
 const editProduct = async (req, res) => {
   try {
     const { quantities, details, variants, ...updatedFields } = req.fields;
@@ -214,8 +213,7 @@ const editProduct = async (req, res) => {
   }
 };
 
-
-  const deleteProduct = async (req, res) => {
+const deleteProduct = async (req, res) => {
     try {
       const product = await Product.findById(req.params.id);
       if (!product) {
@@ -233,7 +231,7 @@ const editProduct = async (req, res) => {
     }
   };
   
-  const getAllProductsWithCategory = async (req, res) => {
+const getAllProductsWithCategory = async (req, res) => {
     try {
       const categories = await Category.find({}, "name _id isParent isVisible isHomePageVisible isSpecial isNew isSale isFeatured").lean();
       const products = await Product.find({})
@@ -277,32 +275,40 @@ const editProduct = async (req, res) => {
       res.status(500).json({ success: false, message: "Internal server error" });
     }
   };
-  
-  
-  const searchProducts = async (req, res) => {
-    try {
-      const query = req.query.q;
-  
-      if (!query || query.trim() === "") {
-        return res.status(400).json({ message: "Please provide a search query" });
-      }
-  
-      const regex = new RegExp(query, "i"); 
-      const products = await Product.find({ name: regex });
-      res.status(200).json({
-        success: true,
-        data: products,
-        message: products.length > 0 ? "Products found" : "No products found",
-      });
+const searchProducts = async (req, res) => {
+  try {
+    const query = req.query.q;
 
-    } catch (error) {
-      console.error("Error searching products:", error);
-      res.status(500).json({ message: "Server Error", error: error.message });
+    if (!query || query.trim() === "") {
+      return res.status(400).json({ message: "Please provide a search query" });
     }
-  };
+
+    const regex = new RegExp(query, "i");
+
+    const products = await Product.find({ name: regex });
+
+    const categories = await Category.find({ name: regex }).select("_id name image");
+
+    res.status(200).json({
+      success: true,
+      data: {
+        products,
+        categories,
+      },
+      message:
+        products.length > 0 || categories.length > 0
+          ? "Results found"
+          : "No results found",
+    });
+  } catch (error) {
+    console.error("Error searching products and categories:", error);
+    res.status(500).json({ message: "Server Error", error: error.message });
+  }
+};
+
   
 
-  module.exports = {
+module.exports = {
     addProduct,
     getAllProduct,
     getProductById,

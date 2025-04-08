@@ -222,31 +222,23 @@ const getSubcategoriesWithProducts = async (req, res) => {
   try {
     const { categoryId } = req.params;
     const categoryObjectId = new mongoose.Types.ObjectId(categoryId);
-
-    // Find the category
     const category = await Category.findById(categoryObjectId).lean();
     if (!category) {
       return res.status(404).json({ error: "Category not found" });
     }
-
-    // Fetch products directly under the main category
     const categoryProducts = await Product.find({ category: categoryObjectId })
       .populate("variants")
       .lean();
-
-    // Fetch all subcategories
     const subcategories = await Category.find({ parentCategory: categoryObjectId }).lean();
 
     const subcategoryIds = subcategories.map((sub) => sub._id);
 
-    // Fetch products for all subcategories
     const subcategoryProducts = await Product.find({
       category: { $in: subcategoryIds },
     })
       .populate("variants")
       .lean();
 
-    // Map each subcategory to its products
     const subcategoriesWithProducts = subcategories.map((sub) => ({
       _id: sub._id,
       name: sub.name,
@@ -256,7 +248,6 @@ const getSubcategoriesWithProducts = async (req, res) => {
       ),
     }));
 
-    // Combine parent category with its products at the top
     const combinedResponse = [
       {
         _id: category._id,

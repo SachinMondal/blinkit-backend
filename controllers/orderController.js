@@ -1,91 +1,92 @@
 const Order = require("../models/orderModel");
-const User = require("../models/userModel");
-const Address = require("../models/addressModel");
 const OrderItem=require("../models/OrderItemModel");
 const Product = require("../models/productModel");
 
 
 const createNewOrder = async (req, res) => {
-    try {
-      const userId = req.user._id;
-      const { cartItems, shippingAddress } = req.body;
-  
-      if (!cartItems || !cartItems.cartItems || cartItems.cartItems.length === 0) {
-        return res.status(400).json({ message: "Cart items cannot be empty." });
-      }
-  
-      if (!shippingAddress || !shippingAddress._id) {
-        return res.status(400).json({ message: "Shipping address is required." });
-      }
-  
-      const cartItemsArray = cartItems.cartItems;
-  
-      // ✅ Step 1: Validate product availability
-      const productIds = cartItemsArray.map(item => item.product?._id).filter(Boolean);
-      const products = await Product.find({ _id: { $in: productIds } });
-  
-      if (products.length !== cartItemsArray.length) {
-        return res.status(400).json({ message: "One or more products are unavailable." });
-      }
-  
-      // ✅ Step 2: Create order (without items)
-      const newOrder = new Order({
-        user: userId,
-        shippingAddress: shippingAddress._id,
-        totalCartAmount: cartItems.totalCartAmount,
-        totalCartDiscountAmount: cartItems.totalCartDiscountAmount,
-        totalCartDiscountedPrice: cartItems.totalCartDiscountedPrice,
-        totalItems: cartItems.totalCartSize,
-      });
-  
-      const savedOrder = await newOrder.save();
-  
-      // ✅ Step 3: Create order items linked to order
-      const orderItems = cartItemsArray.map(item => ({
-        orderId: savedOrder._id,
-        productId: item.product._id,
-        quantity: item.quantity,
-        variantDetails: item.variantDetails,
-        subtotalPrice: item.subtotalPrice,
-        subtotalDiscountedPrice: item.subtotalDiscountedPrice,
-        discountAmount: item.discountAmount,
-      }));
-  
-      const savedOrderItems = await OrderItem.insertMany(orderItems);
-  
-      // ✅ Step 4: Update order with orderItems reference
-      savedOrder.orderItems = savedOrderItems.map(item => item._id);
-      await savedOrder.save();
-  
-      // ✅ Step 5: Send response
-      res.status(201).json({
-        success: true,
-        message: "Order created successfully",
-        order: savedOrder,
-      });
-  
-    } catch (error) {
-      console.error("Error creating order:", error);
-      res.status(500).json({
-        success: false,
-        message: "Error creating order",
-        error: error.message,
-      });
+  try {
+    const userId = req.user._id;
+    const { cartItems, shippingAddress } = req.body;
+
+    if (!cartItems || !Array.isArray(cartItems.cartItems) || cartItems.cartItems.length === 0) {
+      return res.status(400).json({ message: "Cart items cannot be empty." });
     }
-  };
+
+    if (!shippingAddress || !shippingAddress._id) {
+      return res.status(400).json({ message: "Shipping address is required." });
+    }
+
+    const cartItemsArray = cartItems.cartItems;
+
+   
+    const productIds = cartItemsArray.map(item => item.product?._id).filter(Boolean);
+    const uniqueProductIds = [...new Set(productIds.map(id => id.toString()))];
+
+    const products = await Product.find({ _id: { $in: uniqueProductIds } })
+
+    if (products.length !== uniqueProductIds.length) {
+      return res.status(400).json({ message: "One or more products are unavailable." });
+    }
+
+    const newOrder = new Order({
+      user: userId,
+      shippingAddress: shippingAddress._id,
+      totalCartAmount: cartItems.totalCartAmount,
+      totalCartDiscountAmount: cartItems.totalCartDiscountAmount,
+      totalCartDiscountedPrice: cartItems.totalCartDiscountedPrice,
+      totalItems: cartItems.totalCartSize,
+      discountedTotal: cartItems.discountedTotal,
+      handlingCharge: cartItems.handlingCharge,
+      deliveryCharge: cartItems.deliveryCharge,
+      finalPrice: cartItems.finalAmount,
+    });
+
+    const savedOrder = await newOrder.save();
+
+    const orderItems = cartItemsArray.map(item => ({
+      orderId: savedOrder._id,
+      productId: item.product._id,
+      quantity: item.quantity,
+      variantDetails: item.variantDetails,
+      subtotalPrice: item.subtotalPrice,
+      subtotalDiscountedPrice: item.subtotalDiscountedPrice,
+      discountAmount: item.discountAmount,
+    }));
+
+    const savedOrderItems = await OrderItem.insertMany(orderItems);
+
+    savedOrder.orderItems = savedOrderItems.map(item => item._id);
+    await savedOrder.save();
+
+    res.status(201).json({
+      success: true,
+      message: "Order created successfully",
+      order: savedOrder,
+    });
+
+  } catch (error) {
+    console.error("Error creating order:", error);
+    res.status(500).json({
+      success: false,
+      message: "Error creating order",
+      error: error.message,
+    });
+  }
+};
+
+
   
 const getUserOrders = async (req, res) => {
-    try {
-      const userId = req.user._id;
-      const orders = await Order.find({ user: userId })
-        .populate("shippingAddress")
-        .sort({ createdAt: -1 })
-        .lean();
-  
-      const orderIds = orders.map(order => order._id);
-  
-      // Get all order items related to those orders
-      const orderItems = await OrderItem.find({ orderId: { $in: orderIds } })
+  try {
+    const userId = req.user._id;
+    const orders = await Order.find({ user: userId })
+      .populate("shippingAddress")
+      .sort({ createdAt: -1 })
+      .lean();
+
+    const orderIds = orders.map(order => order._id);
+
+    const orderItems = await OrderItem.find({ orderId: { $in: orderIds } })
       .populate({
         path: "productId",
         populate: {
@@ -94,41 +95,45 @@ const getUserOrders = async (req, res) => {
       })
       .lean();
 
-      const orderMap = {};
-      orders.forEach(order => {
-        orderMap[order._id.toString()] = {
-          _id: order._id,
-          totalCartAmount: order.totalCartAmount,
-          totalCartDiscountAmount: order.totalCartDiscountAmount,
-          totalCartDiscountedPrice: order.totalCartDiscountedPrice,
-          totalItems: order.totalItems,
-          orderStatus: order.orderStatus,
-          createdAt: order.createdAt,
-          shippingAddress: order.shippingAddress,
-          deliveryTime: order.deliveryTime,
-          orderItems: []
-        };
-      });
-  
-      // Push each item to its respective order
-      orderItems.forEach(item => {
-        const orderIdStr = item.orderId.toString();
-        if (orderMap[orderIdStr]) {
-          orderMap[orderIdStr].orderItems.push(item);
-        }
-      });
-  
-      const result = Object.values(orderMap);
-  
-      res.status(200).json({ success: true, data: result });
-    } catch (error) {
-  
-      res.status(500).json({
-        message: "Error fetching user orders",
-        error: error.message,
-      });
-    }
-  };
+    const orderMap = {};
+    orders.forEach(order => {
+      orderMap[order._id.toString()] = {
+        _id: order._id,
+        totalCartAmount: order.totalCartAmount,
+        totalCartDiscountAmount: order.totalCartDiscountAmount,
+        totalCartDiscountedPrice: order.totalCartDiscountedPrice,
+        discountedTotal: order.discountedTotal,
+        handlingCharge: order.handlingCharge,
+        deliveryCharge: order.deliveryCharge,
+        finalPrice: order.finalPrice,
+        totalItems: order.totalItems,
+        orderStatus: order.orderStatus,
+        createdAt: order.createdAt,
+        shippingAddress: order.shippingAddress,
+        deliveryTime: order.deliveryTime,
+        orderItems: []
+      };
+    });
+
+    // Push each item to its respective order
+    orderItems.forEach(item => {
+      const orderIdStr = item.orderId.toString();
+      if (orderMap[orderIdStr]) {
+        orderMap[orderIdStr].orderItems.push(item);
+      }
+    });
+
+    const result = Object.values(orderMap);
+
+    res.status(200).json({ success: true, data: result });
+  } catch (error) {
+    res.status(500).json({
+      message: "Error fetching user orders",
+      error: error.message,
+    });
+  }
+};
+
   
 const getAllOrdersForAdmin = async (req, res) => {  
     try {

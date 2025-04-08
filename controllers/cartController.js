@@ -40,13 +40,11 @@ const addToCart = async (req, res) => {
       });
   
       if (cartItem) {
-        // Update the existing cart item
         cartItem.quantity = count;
         cartItem.subtotalPrice = count * selectedVariant.price;
         cartItem.subtotalDiscountedPrice = count * selectedVariant.discountPrice;
         cartItem.discountAmount = count * (selectedVariant.price - selectedVariant.discountPrice);
       } else {
-        // Create a new cart item
         cartItem = new CartItem({
           cart: cart._id,
           user: userId,
@@ -70,10 +68,8 @@ const addToCart = async (req, res) => {
   
       await cartItem.save();
   
-      // Fetch updated cart items
       const cartItems = await CartItem.find({ cart: cart._id });
   
-      // Update cart totals
       cart.totalCartSize = cartItems.length;
       cart.totalCartAmount = cartItems.reduce((acc, item) => acc + item.subtotalPrice, 0);
       cart.totalCartDiscountedPrice = cartItems.reduce((acc, item) => acc + item.subtotalDiscountedPrice, 0);
@@ -81,34 +77,42 @@ const addToCart = async (req, res) => {
   
       await cart.save();
   
-      res.status(200).json({ success: true, data: cart });
+      return res.status(200).json({ success: true, data: cart });
     } catch (err) {
-      res.status(500).json({ message: err.message });
+      return res.status(500).json({ message: err.message });
     }
   };
   
-// Get cart items
-const getCart = async (req, res) => {
+
+  const getCart = async (req, res) => {
     try {
       const userId = req.user._id;
   
       const cart = await Cart.findOne({ user: userId })
         .populate({
-          path: "cartItems", 
-          populate: {
-            path: "product", 
-            model: "Product",
-          },
+          path: "cartItems",
+          populate: [
+            {
+              path: "product",
+              model: "Product",
+            },
+            {
+              path: "variantDetails",
+              model: "Variant", 
+            },
+          ],
         });
   
-      if (!cart || cart.cartItems.length === 0)
-        return res.status(404).json({ message: "Cart is empty" });  
+      if (!cart || cart.cartItems.length === 0) {
+        return res.status(404).json({ message: "Cart is empty" });
+      }
 
-      res.status(200).json({ success: true, data: cart });
+      return res.status(200).json({ success: true, data: cart });
     } catch (err) {
-      res.status(500).json({ message: err.message });
+      return res.status(500).json({ message: err.message });
     }
   };
+  
 
 // Remove item from cart
 const removeFromCart = async (req, res) => {

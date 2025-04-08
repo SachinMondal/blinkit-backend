@@ -14,7 +14,7 @@ const orderSchema = new mongoose.Schema({
   orderItems: [
     {
       type: mongoose.Schema.Types.ObjectId,
-      ref: "OrderItem", 
+      ref: "OrderItem",
     },
   ],
   totalCartAmount: {
@@ -29,18 +29,34 @@ const orderSchema = new mongoose.Schema({
     type: Number,
     required: true,
   },
+  discountedTotal: {
+    type: Number,
+    required: true,
+  },
+  handlingCharge: {
+    type: Number,
+    required: true,
+  },
+  deliveryCharge: {
+    type: Number,
+    required: true,
+  },
   totalItems: {
     type: Number,
     required: true,
   },
-  deliveryTime:{
-    type:String,
-    default:"Pending"
+  deliveryTime: {
+    type: String,
+    default: "Pending",
   },
   orderStatus: {
     type: String,
     enum: ["PENDING", "ACCEPTED", "SHIPPED", "DELIVERED", "CANCEL", "REJECT"],
     default: "PENDING",
+  },
+  finalPrice: {
+    type: Number,
+    required: true,
   },
   createdAt: {
     type: Date,
