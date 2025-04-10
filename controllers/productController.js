@@ -81,8 +81,8 @@ const addProduct = async (req, res) => {
     });
 
   } catch (error) {
-    console.error("Error adding product:", error);
-    res.status(500).json({ message: error.message });
+    
+    return res.status(500).json({ message: error.message });
   }
 };
 
@@ -91,8 +91,8 @@ const getAllProduct=async (req,res)=>{
         const products=await Product.find().populate("category","name");
         res.status(200).json({success:true,data:products});
     }catch(error){
-        console.error("Error getting products:",error);
-        res.status(500).json({message:error.message});
+        
+        return res.status(500).json({message:error.message});
     }
 }
 
@@ -104,8 +104,8 @@ const getProductById=async (req,res)=>{
         }
         res.status(200).json({success:true,data:product});
     }catch(error){
-        console.error("Error getting product by ID:",error);
-        res.status(500).json({message:error.message});
+        
+        return res.status(500).json({message:error.message});
     }
 }
 
@@ -117,8 +117,8 @@ const getProductByCategoryId=async(req,res)=>{
         }
         res.status(200).json({success:true,data:products});
     }catch(error){
-        console.error("Error getting products by category ID:",error);
-        res.status(500).json({message:error.message});
+        
+        return res.status(500).json({message:error.message});
     }
 }
 
@@ -136,7 +136,7 @@ const editProduct = async (req, res) => {
         try {
           await deleteImage(existingProduct.image);
         } catch (error) {
-          console.error("Error deleting existing image:", error);
+          return error;
         }
       }
       imageUrl = await uploadImage(req.files.imageFile.path);
@@ -208,8 +208,8 @@ const editProduct = async (req, res) => {
 
     res.json({ message: "Product updated successfully", updatedProduct: existingProduct });
   } catch (error) {
-    console.error("Error updating product:", error);
-    res.status(500).json({ message: error.message });
+    
+    return res.status(500).json({ message: error.message });
   }
 };
 
@@ -226,8 +226,8 @@ const deleteProduct = async (req, res) => {
       await Product.findByIdAndDelete(req.params.id);
       res.status(200).json({ message: "Product deleted successfully" });
     } catch (error) {
-      console.error("Error deleting product:", error);
-      res.status(500).json({ message: "Error deleting product", error });
+      
+      return res.status(500).json({ message: "Error deleting product", error });
     }
   };
   
@@ -271,8 +271,8 @@ const getAllProductsWithCategory = async (req, res) => {
   
       res.status(200).json({ success: true, categories: groupedProducts });
     } catch (error) {
-      console.error("Error fetching products:", error);
-      res.status(500).json({ success: false, message: "Internal server error" });
+      
+      return res.status(500).json({ success: false, message: "Internal server error" });
     }
   };
 const searchProducts = async (req, res) => {
@@ -301,8 +301,8 @@ const searchProducts = async (req, res) => {
           : "No results found",
     });
   } catch (error) {
-    console.error("Error searching products and categories:", error);
-    res.status(500).json({ message: "Server Error", error: error.message });
+    
+    return res.status(500).json({ message: "Server Error", error: error.message });
   }
 };
 

@@ -163,8 +163,8 @@ const updateCategory = async (req, res) => {
 
     res.status(200).json({ message: "Category updated successfully", updatedCategory });
   } catch (error) {
-    console.error("Error updating category:", error);
-    res.status(500).json({ message: error.message });
+    
+    return res.status(500).json({ message: error.message });
   }
 };
 
@@ -189,8 +189,8 @@ const deleteCategory = async (req, res) => {
     await Category.findByIdAndDelete(req.params.id);
     res.status(200).json({ message: "Category deleted successfully" });
   } catch (error) {
-    console.error("Error deleting category:", error);
-    res.status(500).json({ message: "Error deleting category", error });
+    
+    return res.status(500).json({ message: "Error deleting category", error });
   }
 };
 
@@ -211,8 +211,7 @@ const getCategoriesWithSubcategories = async (req,res) => {
     ]);
     return res.status(200).json({success: true,data:categoriesWithSubcategories});
   } catch (error) {
-    console.error("❌ Error fetching categories:", error);
-    throw error;
+    return res.status(404).send({success:true,message:"Internal Server Error"});
   }
 };
 
@@ -263,8 +262,8 @@ const getSubcategoriesWithProducts = async (req, res) => {
       subcategories: combinedResponse,
     });
   } catch (error) {
-    console.error("Error fetching products and subcategories:", error);
-    res.status(500).json({ error: "Internal Server Error" });
+  
+    return res.status(500).json({ error: "Internal Server Error" });
   }
 };
 

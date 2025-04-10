@@ -37,7 +37,7 @@ const deleteBanner = async (req, res) => {
                 await deleteImage(banner.image);
             }
         } catch (error) {
-            console.error("Error deleting image:", error);
+            return error;
         } finally {
             await Banner.findByIdAndDelete(req.params.id);
         }
@@ -57,6 +57,7 @@ const getAllBanners = async (req, res) => {
         res.status(500).json({ message: error.message });
     }
 };
+
 
 module.exports = {
     uploadBanner,

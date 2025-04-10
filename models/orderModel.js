@@ -47,7 +47,7 @@ const orderSchema = new mongoose.Schema({
   },
   deliveryTime: {
     type: String,
-    default: "Pending",
+    default: "PENDING",
   },
   orderStatus: {
     type: String,

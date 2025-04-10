@@ -1,7 +1,7 @@
 const Order = require("../models/orderModel");
 const OrderItem=require("../models/OrderItemModel");
 const Product = require("../models/productModel");
-
+const { sendRejectionEmail,sendAcceptanceEmail } = require("../utils/mailHandler");
 
 const createNewOrder = async (req, res) => {
   try {
@@ -65,8 +65,8 @@ const createNewOrder = async (req, res) => {
     });
 
   } catch (error) {
-    console.error("Error creating order:", error);
-    res.status(500).json({
+    
+    return res.status(500).json({
       success: false,
       message: "Error creating order",
       error: error.message,
@@ -74,8 +74,6 @@ const createNewOrder = async (req, res) => {
   }
 };
 
-
-  
 const getUserOrders = async (req, res) => {
   try {
     const userId = req.user._id;
@@ -134,7 +132,6 @@ const getUserOrders = async (req, res) => {
   }
 };
 
-  
 const getAllOrdersForAdmin = async (req, res) => {  
     try {
       const orders = await Order.find()
@@ -181,8 +178,8 @@ const getAllOrdersForAdmin = async (req, res) => {
       const result = Object.values(orderMap);
       res.status(200).json({ success: true, data: result });
     } catch (error) {
-      console.error("Error fetching orders for admin:", error);
-      res.status(500).json({
+      
+      return res.status(500).json({
         message: "Error fetching orders for admin",
         error: error.message,
       });
@@ -202,18 +199,46 @@ const updateOrder = async (req, res) => {
       orderId,
       { $set: updateFields },
       { new: true, runValidators: true }
-    ).populate("orderItems");
+    )
+      .populate({
+        path: "orderItems",
+        populate: [
+          { path: "productId" },
+          { path: "variantDetails" }
+        ]
+      })
+      .populate("user");
 
     if (!updatedOrder) {
       return res.status(404).json({ message: "Order not found" });
     }
+    if (
+      updateFields.orderStatus === "ACCEPTED" &&
+      updatedOrder.user?.email
+    ) {
+      await sendAcceptanceEmail(updatedOrder.user.email, updatedOrder);
+    }
+    
+
+    if (
+      updateFields.orderStatus === "REJECT" &&
+      updateFields.rejectReason &&
+      updatedOrder.user?.email
+    ) {
+      await sendRejectionEmail(
+        updatedOrder.user.email,
+        updatedOrder,
+        updateFields.rejectReason
+      );
+    }
 
     res.status(200).json({ success: true, data: updatedOrder });
   } catch (error) {
-    console.error("Error updating order:", error);
-    res.status(500).json({ message: "Internal server error", error: error.message });
+    
+    return res.status(500).json({ message: "Internal server error", error: error.message });
   }
 };
+
 
 
 const getOrderById = async (req, res) => {
@@ -240,13 +265,6 @@ const getOrderById = async (req, res) => {
     res.status(500).json({ success: false, message: "Internal server error", error: error.message });
   }
 };
-
-
-
-
-
-
-
 
 const deleteOrder = async (req, res) => {
     try {

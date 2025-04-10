@@ -32,7 +32,6 @@ const sendOTP = async (req, res) => {
 
     return res.status(200).json({ message: "OTP sent successfully"+otp });
   } catch (error) {
-    console.log(error.stack);
     return res.status(500).json({ message: "Error sending OTP", error });
   }
 };
@@ -60,7 +59,7 @@ const verifyOTP = async (req, res) => {
     await user.save();
     return res.status(200).json({ message: "Login successful", user,token:token });
   } catch (error) {
-    console.log(error.stack);
+    
     return res.status(500).json({ message: "Error verifying OTP", error });
   }
 };
@@ -80,7 +79,7 @@ const updateUser = async (req, res) => {
   
       return res.status(200).json({ message: "User updated successfully", user });
     } catch (error) {
-      console.log(error.stack);
+      
       return res.status(500).json({ message: "Error updating user", error });
     }
   };
@@ -88,7 +87,6 @@ const updateUser = async (req, res) => {
 const getAllUser=async (req,res)=>{
   try{
 const users=await User.find({});
-console.log(users);
     return res.status(200).json({ success: true, users });
   }catch(error){
     return res.status(500).json({ message: "Error fetching users", error });
