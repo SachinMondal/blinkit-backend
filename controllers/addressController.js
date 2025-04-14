@@ -43,7 +43,7 @@ const editAddress = async (req, res) => {
 
 const getAllAddresses = async (req, res) => {
     try {
-        const addresses = await Address.find({ user: req.user._id });
+        const addresses = await Address.find({ user: req.user._id }).sort({ createdAt: -1 });
 
         res.status(200).json({ success: true, addresses });
     } catch (error) {
