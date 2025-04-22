@@ -33,6 +33,8 @@ const CartSchema = new mongoose.Schema(
       required: true,
       default: 0,
     },
+    categoryDiscount:{type:Number},
+    productDiscount:{type:Number},
   },
   { timestamps: true }
 );

@@ -7,7 +7,6 @@ const createNewOrder = async (req, res) => {
   try {
     const userId = req.user._id;
     const { cartItems, shippingAddress } = req.body;
-
     if (!cartItems || !Array.isArray(cartItems.cartItems) || cartItems.cartItems.length === 0) {
       return res.status(400).json({ message: "Cart items cannot be empty." });
     }
@@ -38,9 +37,10 @@ const createNewOrder = async (req, res) => {
       discountedTotal: cartItems.discountedTotal,
       handlingCharge: cartItems.handlingCharge,
       deliveryCharge: cartItems.deliveryCharge,
+      productDiscount:cartItems.productDiscount,
+      categoryDiscount:cartItems.categoryDiscount,
       finalPrice: cartItems.finalAmount,
     });
-
     const savedOrder = await newOrder.save();
 
     const orderItems = cartItemsArray.map(item => ({
@@ -109,11 +109,13 @@ const getUserOrders = async (req, res) => {
         createdAt: order.createdAt,
         shippingAddress: order.shippingAddress,
         deliveryTime: order.deliveryTime,
+        categoryDiscount:order.categoryDiscount,
+        productDiscount:order.productDiscount,
         orderItems: []
       };
     });
 
-    // Push each item to its respective order
+
     orderItems.forEach(item => {
       const orderIdStr = item.orderId.toString();
       if (orderMap[orderIdStr]) {
@@ -163,6 +165,8 @@ const getAllOrdersForAdmin = async (req, res) => {
           createdAt: order.createdAt,
           shippingAddress: order.shippingAddress,
           deliveryTime: order.deliveryTime,
+          categoryDiscount:order.categoryDiscount,
+          productDiscount:order.productDiscount,
           orderItems: []
         };
       });

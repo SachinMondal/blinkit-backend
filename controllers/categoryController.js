@@ -2,7 +2,9 @@ const Category = require("../models/categoryModel");
 const Product=require("../models/productModel")
 const {uploadImage}=require("../utils/uploadImage");
 const cloudinary = require("../config/Cloudinary");
+const Variant=require("../models/VariantModel");
 const mongoose=require("mongoose");
+
 const addCategory = async (req, res) => {
   try {
     const {
@@ -37,7 +39,6 @@ const addCategory = async (req, res) => {
    
     const parseBoolean = (value) => !!(value && (value === "on" || value === "true" || value === true));
 
-    // Create new category
     const newCategory = new Category({
       name,
       description,
@@ -70,7 +71,6 @@ const addCategory = async (req, res) => {
   }
 };
 
-
 const getCategories = async (req, res) => {
   try {
     const categories = await Category.find().populate("parentCategory", "name");
@@ -94,7 +94,6 @@ const getCategoryById = async (req, res) => {
     res.status(500).json({ message: "Error fetching category", error });
   }
 };
-
 const updateCategory = async (req, res) => {
   try {
     const { id } = req.params;
@@ -126,8 +125,17 @@ const updateCategory = async (req, res) => {
     const tagsArray = tags ? tags.split(",").map(tag => tag.trim()).filter(tag => tag.length > 0) : [];
 
     const parseBoolean = (value) => !!(value && (value === "on" || value === "true" || value === true));
-
     let isParent = !parentCategory;
+
+
+    const currentCategory = await Category.findById(id);
+    if (!currentCategory) {
+      return res.status(404).json({ message: "Category not found" });
+    }
+
+    const isDiscountChanged =
+      discountPercentage &&
+      Number(discountPercentage) !== currentCategory.discountPercentage;
 
     const updatedCategory = await Category.findByIdAndUpdate(
       id,
@@ -140,10 +148,10 @@ const updateCategory = async (req, res) => {
         discountPercentage: discountPercentage ? Number(discountPercentage) : 0,
         status: status || "active",
         seoTitle: seoTitle && seoTitle.trim() !== "" ? seoTitle.trim() : `${name} - Best ${name} Category`,
-        seoDescription: seoDescription && seoDescription.trim() !== "" 
-          ? seoDescription.trim() 
-          : description 
-            ? description.substring(0, 150) 
+        seoDescription: seoDescription && seoDescription.trim() !== ""
+          ? seoDescription.trim()
+          : description
+            ? description.substring(0, 150)
             : `Explore the best ${name} products and services.`,
         isVisible: parseBoolean(isVisible),
         isHomePageVisible: parseBoolean(isHomePageVisible),
@@ -156,9 +164,29 @@ const updateCategory = async (req, res) => {
       },
       { new: true, runValidators: true }
     );
+    if (isDiscountChanged) {
+      const products = await Product.find({ category: updatedCategory._id }).select("_id");
+      const productIds = products.map(p => p._id);
 
-    if (!updatedCategory) {
-      return res.status(404).json({ message: "Category not found" });
+      const variants = await Variant.find({ product: { $in: productIds } });
+      const bulkOps = variants.map(variant => {
+        const newCategoryDiscount = (variant.price * updatedCategory.discountPercentage) / 100;
+        return {
+          updateOne: {
+            filter: { _id: variant._id },
+            update: {
+              $set: {
+                categoryDiscount: newCategoryDiscount,
+                discountPrice: variant.price - newCategoryDiscount
+              }
+            }
+          }
+        };
+      });
+
+      if (bulkOps.length > 0) {
+        await Variant.bulkWrite(bulkOps);
+      }
     }
 
     res.status(200).json({ message: "Category updated successfully", updatedCategory });
@@ -167,7 +195,6 @@ const updateCategory = async (req, res) => {
     return res.status(500).json({ message: error.message });
   }
 };
-
 
 const deleteCategory = async (req, res) => {
   try {
@@ -214,8 +241,6 @@ const getCategoriesWithSubcategories = async (req,res) => {
     return res.status(404).send({success:true,message:"Internal Server Error"});
   }
 };
-
-
 
 const getSubcategoriesWithProducts = async (req, res) => {
   try {
@@ -266,8 +291,6 @@ const getSubcategoriesWithProducts = async (req, res) => {
     return res.status(500).json({ error: "Internal Server Error" });
   }
 };
-
-
 
 module.exports = {
   addCategory,

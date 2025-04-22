@@ -1,88 +1,94 @@
 const Cart = require("../models/cartModel");
 const Product = require("../models/productModel");
 const CartItem = require("../models/CartItemModel");
-
 const addToCart = async (req, res) => {
-    const userId = req.user._id;
-    try {
-      const { productId, variantIndex, count } = req.body;
-  
-      if (!productId || variantIndex === undefined || count === undefined) {
-        return res.status(400).json({ message: "Missing required fields" });
-      }
-  
-      const product = await Product.findById(productId).populate("variants");
-      if (!product) return res.status(404).json({ message: "Product not found" });
-  
-      if (variantIndex < 0 || variantIndex >= product.variants.length) {
-        return res.status(400).json({ message: "Invalid variant index" });
-      }
-  
-      const selectedVariant = product.variants[variantIndex];
-      if (!selectedVariant || selectedVariant.price === undefined || selectedVariant.discountPrice === undefined) {
-        return res.status(400).json({ message: "Invalid variant details" });
-      }
-  
-      if (count > product.stock) {
-        return res.status(400).json({ message: "Requested quantity exceeds stock availability" });
-      }
-  
-      let cart = await Cart.findOne({ user: userId });
-      if (!cart) {
-        cart = new Cart({ user: userId, cartItems: [] });
-        await cart.save();
-      }
-  
-      let cartItem = await CartItem.findOne({
+  const userId = req.user._id;
+  try {
+    const { productId, variantIndex, count } = req.body;
+    if (!productId || variantIndex === undefined || count === undefined) {
+      return res.status(400).json({ message: "Missing required fields" });
+    }
+    const product = await Product.findById(productId).populate("variants");
+    
+    if (!product) return res.status(404).json({ message: "Product not found" });
+
+    if (variantIndex < 0 || variantIndex >= product.variants.length) {
+      return res.status(400).json({ message: "Invalid variant index" });
+    }
+
+    const selectedVariant = product.variants[variantIndex];
+    
+    if (!selectedVariant || selectedVariant.price === undefined || selectedVariant.discountPrice === undefined) {
+      return res.status(400).json({ message: "Invalid variant details" });
+    }
+
+    if (count > product.stock) {
+      return res.status(400).json({ message: "Requested quantity exceeds stock availability" });
+    }
+
+    
+    const basePrice = selectedVariant.price;
+    const variantDiscountedPrice = selectedVariant.discountPrice;
+    const categoryDiscount = selectedVariant.categoryDiscount || 0;
+    const finalDiscountedPrice = basePrice-(categoryDiscount+variantDiscountedPrice)
+
+    let cart = await Cart.findOne({ user: userId });
+    if (!cart) {
+      cart = new Cart({ user: userId, cartItems: [] });
+      await cart.save();
+    }
+
+    let cartItem = await CartItem.findOne({
+      cart: cart._id,
+      product: productId,
+      variantIndex,
+    });
+
+    if (cartItem) {
+      cartItem.quantity = count;
+      cartItem.subtotalPrice = count * basePrice;
+      cartItem.subtotalDiscountedPrice = count * finalDiscountedPrice;
+      cartItem.discountAmount = cartItem.subtotalPrice - cartItem.subtotalDiscountedPrice;
+    } else {
+      cartItem = new CartItem({
         cart: cart._id,
+        user: userId,
         product: productId,
         variantIndex,
-      });
-  
-      if (cartItem) {
-        cartItem.quantity = count;
-        cartItem.subtotalPrice = count * selectedVariant.price;
-        cartItem.subtotalDiscountedPrice = count * selectedVariant.discountPrice;
-        cartItem.discountAmount = count * (selectedVariant.price - selectedVariant.discountPrice);
-      } else {
-        cartItem = new CartItem({
-          cart: cart._id,
-          user: userId,
-          product: productId,
-          variantIndex,
-          variantDetails: {
-            qty: selectedVariant.qty || 0,
-            unit: selectedVariant.unit || "unit",
-            price: selectedVariant.price || 0,
-            discountPrice: selectedVariant.discountPrice || 0,
-          },
-          quantity: count,
-          subtotalPrice: count * selectedVariant.price,
-          subtotalDiscountedPrice: count * selectedVariant.discountPrice,
-          discountAmount: count * (selectedVariant.price - selectedVariant.discountPrice),
-        });
-  
-        await cartItem.save();
-        cart.cartItems.push(cartItem._id);
-      }
-  
+        variantDetails: {
+          qty: selectedVariant.qty || 0,
+          unit: selectedVariant.unit || "unit",
+          price: basePrice,
+         
+        },
+        quantity: count,
+        subtotalPrice: count * basePrice,
+        subtotalDiscountedPrice: count * finalDiscountedPrice,
+        discountAmount: count * (basePrice - finalDiscountedPrice),
+      })
+
       await cartItem.save();
-  
-      const cartItems = await CartItem.find({ cart: cart._id });
-  
-      cart.totalCartSize = cartItems.length;
-      cart.totalCartAmount = cartItems.reduce((acc, item) => acc + item.subtotalPrice, 0);
-      cart.totalCartDiscountedPrice = cartItems.reduce((acc, item) => acc + item.subtotalDiscountedPrice, 0);
-      cart.totalCartDiscountAmount = cart.totalCartAmount - cart.totalCartDiscountedPrice;
-  
-      await cart.save();
-  
-      return res.status(200).json({ success: true, data: cart });
-    } catch (err) {
-      return res.status(500).json({ message: err.message });
+      cart.cartItems.push(cartItem._id);
     }
-  };
-  
+
+    await cartItem.save();
+
+    const cartItems = await CartItem.find({ cart: cart._id });
+
+    cart.totalCartSize = cartItems.length;
+    cart.totalCartAmount = cartItems.reduce((acc, item) => acc + item.subtotalPrice, 0);
+    cart.totalCartDiscountedPrice = cartItems.reduce((acc, item) => acc + item.subtotalDiscountedPrice, 0);
+    cart.totalCartDiscountAmount = cart.totalCartAmount - cart.totalCartDiscountedPrice;
+    cart.categoryDiscount=categoryDiscount;
+    cart.productDiscount=variantDiscountedPrice;
+    await cart.save();
+
+    return res.status(200).json({ success: true, data: cart });
+  } catch (err) {
+    return res.status(500).json({ message: err.message });
+  }
+};
+
 
   const getCart = async (req, res) => {
     try {

@@ -25,8 +25,8 @@ const CartItemSchema = new mongoose.Schema(
       qty: { type: String, required: true },
       unit: { type: String, required: true },
       price: { type: Number, required: true },
-      discountPrice: { type: Number, required: true },
     },
+   
     quantity: {
       type: Number,
       required: true,

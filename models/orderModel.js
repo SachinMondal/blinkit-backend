@@ -58,6 +58,8 @@ const orderSchema = new mongoose.Schema({
     type: Number,
     required: true,
   },
+  categoryDiscount:{type:Number},
+  productDiscount:{type:Number},
   createdAt: {
     type: Date,
     default: Date.now,
