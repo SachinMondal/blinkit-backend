@@ -167,6 +167,7 @@ const getAllOrdersForAdmin = async (req, res) => {
           deliveryTime: order.deliveryTime,
           categoryDiscount:order.categoryDiscount,
           productDiscount:order.productDiscount,
+          finalPrice:order.finalPrice,
           orderItems: []
         };
       });

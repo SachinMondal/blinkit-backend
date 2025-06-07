@@ -32,16 +32,31 @@ const sendOtpEmail = async (to, otp) => {
 };
 
 const sendRejectionEmail = async (userEmail, order, reason) => {
-  const { user, orderItems = [], totalCartAmount, totalCartDiscountAmount, totalCartDiscountedPrice } = order;
+  const {
+    user,
+    orderItems = [],
+    totalCartAmount,
+    totalCartDiscountAmount,
+    totalCartDiscountedPrice,
+  } = order;
 
   const itemsTableRows = orderItems
     .map((item, index) => {
-      const { quantity, subtotalPrice, subtotalDiscountedPrice, discountAmount, productId, variantDetails } = item;
+      const {
+        quantity,
+        subtotalPrice,
+        subtotalDiscountedPrice,
+        discountAmount,
+        productId,
+        variantDetails,
+      } = item;
 
       const productName = productId?.name || "Product Name N/A";
       const variantInfo = variantDetails
         ? Object.entries(variantDetails)
-            .filter(([key]) => key !== "_id" && key !== "__v" && key !== "productId")
+            .filter(
+              ([key]) => key !== "_id" && key !== "__v" && key !== "productId"
+            )
             .map(([key, value]) => `${key}: ${value}`)
             .join(", ")
         : "N/A";
@@ -115,16 +130,31 @@ const sendRejectionEmail = async (userEmail, order, reason) => {
 };
 
 const sendAcceptanceEmail = async (userEmail, order) => {
-  const { user, orderItems = [], totalCartAmount, totalCartDiscountAmount, totalCartDiscountedPrice } = order;
+  const {
+    user,
+    orderItems = [],
+    totalCartAmount,
+    totalCartDiscountAmount,
+    totalCartDiscountedPrice,
+  } = order;
 
   const itemsTableRows = orderItems
     .map((item, index) => {
-      const { quantity, subtotalPrice, subtotalDiscountedPrice, discountAmount, productId, variantDetails } = item;
+      const {
+        quantity,
+        subtotalPrice,
+        subtotalDiscountedPrice,
+        discountAmount,
+        productId,
+        variantDetails,
+      } = item;
 
       const productName = productId?.name || "Product Name N/A";
       const variantInfo = variantDetails
         ? Object.entries(variantDetails)
-            .filter(([key]) => key !== "_id" && key !== "__v" && key !== "productId")
+            .filter(
+              ([key]) => key !== "_id" && key !== "__v" && key !== "productId"
+            )
             .map(([key, value]) => `${key}: ${value}`)
             .join(", ")
         : "N/A";
@@ -144,43 +174,76 @@ const sendAcceptanceEmail = async (userEmail, order) => {
     .join("");
 
   const mailOptions = {
-    from: `"Your Company Name" <${process.env.EMAIL_USER}>`,
+    from: `"GROCESSARY STORE" <${process.env.EMAIL_USER}>`,
     to: userEmail,
     subject: `Order #${order._id} Confirmed!`,
     html: `
-      <div style="font-family: Arial, sans-serif; padding: 20px;">
-        <h2 style="color: #27ae60;">Your Order Has Been Accepted ✅</h2>
-        <p>Hi ${user?.name},</p>
-        <p>We're excited to let you know that your order <strong>#${order._id}</strong> has been <strong style="color: #27ae60;">accepted</strong> and is now being processed.</p>
+    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: auto; padding: 20px; color: #333;">
+  <h2 style="color: #27ae60; text-align: center; border-bottom: 2px solid #27ae60; padding-bottom: 10px;">
+    Your Order Has Been Accepted ✅
+  </h2>
 
-        <h3 style="margin-top: 30px;">Order Summary</h3>
-        <table style="border-collapse: collapse; width: 100%; margin-top: 10px;">
-          <thead style="background-color: #f2f2f2;">
-            <tr>
-              <th style="padding: 8px; border: 1px solid #ddd;">#</th>
-              <th style="padding: 8px; border: 1px solid #ddd;">Product</th>
-              <th style="padding: 8px; border: 1px solid #ddd;">Variant</th>
-              <th style="padding: 8px; border: 1px solid #ddd;">Qty</th>
-              <th style="padding: 8px; border: 1px solid #ddd;">Price</th>
-              <th style="padding: 8px; border: 1px solid #ddd;">Discounted</th>
-              <th style="padding: 8px; border: 1px solid #ddd;">Discount</th>
-            </tr>
-          </thead>
-          <tbody>
-            ${itemsTableRows}
-          </tbody>
-        </table>
+  <p>Hi <strong>${user?.name}</strong>,</p>
 
-        <h3 style="margin-top: 20px;">Total Summary</h3>
-        <ul style="list-style-type: none; padding: 0;">
-          <li><strong>Total Amount:</strong> ₹${totalCartAmount}</li>
-          <li><strong>Total Discount:</strong> ₹${totalCartDiscountAmount}</li>
-          <li><strong>Amount Payable:</strong> ₹${totalCartDiscountedPrice}</li>
-        </ul>
+  <p>
+    We're excited to let you know that your order
+    <strong>#${order._id}</strong> has been
+    <span style="color: #27ae60; font-weight: bold;">accepted</span> and is now being processed.
+    It will be delivered in <strong>${deliveryTime}</strong>.
+  </p>
 
-        <p style="margin-top: 30px;">We'll notify you once your order is shipped. If you have any questions, feel free to reply to this email or contact our support.</p>
-        <p>Thank you for shopping with us!</p>
-      </div>
+  <section style="margin-top: 30px;">
+    <h3 style="border-bottom: 1px solid #ddd; padding-bottom: 8px; color: #555;">
+      Order Summary
+    </h3>
+
+    <table
+      style="width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 14px;"
+      aria-label="Order Summary Table"
+    >
+      <thead>
+        <tr style="background-color: #f2f2f2; text-align: left;">
+          <th style="padding: 10px; border: 1px solid #ddd;">#</th>
+          <th style="padding: 10px; border: 1px solid #ddd;">Product</th>
+          <th style="padding: 10px; border: 1px solid #ddd;">Variant</th>
+          <th style="padding: 10px; border: 1px solid #ddd;">Qty</th>
+          <th style="padding: 10px; border: 1px solid #ddd;">Price (₹)</th>
+          <th style="padding: 10px; border: 1px solid #ddd;">Discounted (₹)</th>
+          <th style="padding: 10px; border: 1px solid #ddd;">Discount (₹)</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${itemsTableRows}
+      </tbody>
+    </table>
+  </section>
+
+  <section style="margin-top: 30px; font-size: 15px;">
+    <h3 style="border-bottom: 1px solid #ddd; padding-bottom: 8px; color: #555;">
+      Total Summary
+    </h3>
+    <ul style="list-style: none; padding: 0; margin-top: 10px;">
+      <li style="padding: 5px 0;">
+        <strong>Total Amount:</strong> ₹${totalCartAmount.toFixed(2)}
+      </li>
+      <li style="padding: 5px 0;">
+        <strong>Total Discount:</strong> ₹${totalCartDiscountAmount.toFixed(2)}
+      </li>
+      <li style="padding: 5px 0; font-size: 16px; font-weight: bold; color: #27ae60;">
+        Amount Payable: ₹${finalPrice.toFixed(2)}
+      </li>
+    </ul>
+  </section>
+
+  <section style="margin-top: 30px; font-size: 14px; color: #555;">
+    <p>
+      We'll notify you once your order is shipped. If you have any questions,
+      feel free to reply to this email or contact our support team.
+    </p>
+    <p>Thank you for shopping with us!</p>
+  </section>
+</div>
+
     `,
   };
 
@@ -192,6 +255,4 @@ const sendAcceptanceEmail = async (userEmail, order) => {
   }
 };
 
-
-
-module.exports = { sendOtpEmail,sendRejectionEmail,sendAcceptanceEmail };
+module.exports = { sendOtpEmail, sendRejectionEmail, sendAcceptanceEmail };
