@@ -5,16 +5,17 @@ const cloudinary = require("../config/Cloudinary");
 const Variant=require("../models/VariantModel");
 
 
+
 const addProduct = async (req, res) => {
   try {
     const {
       category,
       categoryName,
-      productName, 
-      productDescription, 
+      productName,
+      productDescription,
       weight,
       stock,
-      vegNonVeg, 
+      vegNonVeg,
       brand,
       size,
       packerDetails,
@@ -26,25 +27,36 @@ const addProduct = async (req, res) => {
       customerCare,
       seller,
       disclaimer,
-      details, 
+      details,
       quantities,
     } = req.fields;
-    let imageUrl = "";
-    if (req.files?.image) {
-      imageUrl = await uploadImage(req.files.image.path);
+    let images = [];
+
+   s
+    const rawFiles = req.files['images[]'];
+    if (rawFiles) {
+      const filesArray = Array.isArray(rawFiles) ? rawFiles : [rawFiles];
+
+      images = await Promise.all(
+        filesArray.map(async (file) => {
+          return await uploadImage(file.path);
+        })
+      );
     }
 
+    // Parse JSON fields safely
     const parsedQuantities = typeof quantities === "string" ? JSON.parse(quantities) : quantities || [];
     const parsedDetails = typeof details === "string" ? JSON.parse(details) : details || [];
+
     const newProduct = new Product({
       category,
       categoryName,
-      name: productName, 
-      description: productDescription, 
-      image: imageUrl,
+      name: productName,
+      description: productDescription,
+      images, // array of image URLs
       weight,
       stock,
-      type: vegNonVeg, 
+      type: vegNonVeg,
       brand,
       size,
       packerDetails,
@@ -58,21 +70,24 @@ const addProduct = async (req, res) => {
       disclaimer,
       details: parsedDetails,
     });
-    const categoryData=await Category.findById(category);
+
+    const categoryData = await Category.findById(category);
     await newProduct.save();
+
     let createdVariants = [];
     if (parsedQuantities.length > 0) {
-      const variantDocs = parsedQuantities.map(variant => ({
+      const variantDocs = parsedQuantities.map((variant) => ({
         product: newProduct._id,
         qty: variant.qty,
         unit: variant.unit,
         price: variant.price,
-        discount:variant.discountPrice,
-        discountPrice: parseFloat((variant.discountPrice*variant.price)/100),
-        categoryDiscount:parseFloat((categoryData.discountPercentage*variant.price)/100)
+        discount: variant.discountPrice,
+        discountPrice: parseFloat((variant.discountPrice * variant.price) / 100),
+        categoryDiscount: parseFloat((categoryData.discountPercentage * variant.price) / 100),
       }));
+
       createdVariants = await Variant.insertMany(variantDocs);
-      newProduct.variants = createdVariants.map(variant => variant._id);
+      newProduct.variants = createdVariants.map((variant) => variant._id);
       await newProduct.save();
     }
 
@@ -81,11 +96,13 @@ const addProduct = async (req, res) => {
       product: newProduct,
       variants: createdVariants,
     });
-
   } catch (error) {
+    console.error("Add product error:", error);
     return res.status(500).json({ message: error.message });
   }
 };
+
+
 
 const getAllProduct=async (req,res)=>{
     try{
@@ -131,16 +148,32 @@ const editProduct = async (req, res) => {
       return res.status(404).json({ message: "Product not found!" });
     }
 
-    let imageUrl = existingProduct.image;
-    if (req.files && req.files.imageFile) {
-      if (existingProduct.image) {
-        try {
-          await deleteImage(existingProduct.image);
-        } catch (error) {
-          return res.status(500).json({ message: "Failed to delete old image" });
+    let imageUrls = existingProduct.images||[];
+    if (req.files && req.files.images) {
+      // Delete old images from Cloudinary
+      if (existingProduct.images && existingProduct.images.length > 0) {
+        for (const imgUrl of existingProduct.images) {
+          try {
+            // Extract publicId from the URL to delete from Cloudinary
+            const publicId = imgUrl.split("/").pop().split(".")[0];
+            await cloudinary.uploader.destroy(publicId);
+          } catch (err) {
+            console.warn("Failed to delete old image:", err);
+          }
         }
       }
-      imageUrl = await uploadImage(req.files.imageFile.path);
+
+      // Upload new images
+      imageUrls = [];
+      if (Array.isArray(req.files.images)) {
+        for (const file of req.files.images) {
+          const url = await uploadImage(file.path);
+          imageUrls.push(url);
+        }
+      } else {
+        const url = await uploadImage(req.files.images.path);
+        imageUrls.push(url);
+      }
     }
 
     let newDetails = existingProduct.details;
@@ -226,10 +259,12 @@ const deleteProduct = async (req, res) => {
       if (!product) {
         return res.status(404).json({ message: "Product not found" });
       }
-      if (product.image) {
-        const publicId = product.image.split("/").pop().split(".")[0];
+       if (product.images && product.images.length > 0) {
+      for (const imgUrl of product.images) {
+        const publicId = imgUrl.split("/").pop().split(".")[0];
         await cloudinary.uploader.destroy(publicId);
       }
+    }
       await Product.findByIdAndDelete(req.params.id);
       res.status(200).json({ message: "Product deleted successfully" });
     } catch (error) {
