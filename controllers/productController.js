@@ -5,7 +5,6 @@ const cloudinary = require("../config/Cloudinary");
 const Variant=require("../models/VariantModel");
 
 
-
 const addProduct = async (req, res) => {
   try {
     const {
@@ -29,10 +28,10 @@ const addProduct = async (req, res) => {
       disclaimer,
       details,
       quantities,
+      isArchive
     } = req.fields;
     let images = [];
 
-   s
     const rawFiles = req.files['images[]'];
     if (rawFiles) {
       const filesArray = Array.isArray(rawFiles) ? rawFiles : [rawFiles];
@@ -69,6 +68,7 @@ const addProduct = async (req, res) => {
       seller,
       disclaimer,
       details: parsedDetails,
+      isArchive
     });
 
     const categoryData = await Category.findById(category);
@@ -148,34 +148,6 @@ const editProduct = async (req, res) => {
       return res.status(404).json({ message: "Product not found!" });
     }
 
-    let imageUrls = existingProduct.images||[];
-    if (req.files && req.files.images) {
-      // Delete old images from Cloudinary
-      if (existingProduct.images && existingProduct.images.length > 0) {
-        for (const imgUrl of existingProduct.images) {
-          try {
-            // Extract publicId from the URL to delete from Cloudinary
-            const publicId = imgUrl.split("/").pop().split(".")[0];
-            await cloudinary.uploader.destroy(publicId);
-          } catch (err) {
-            console.warn("Failed to delete old image:", err);
-          }
-        }
-      }
-
-      // Upload new images
-      imageUrls = [];
-      if (Array.isArray(req.files.images)) {
-        for (const file of req.files.images) {
-          const url = await uploadImage(file.path);
-          imageUrls.push(url);
-        }
-      } else {
-        const url = await uploadImage(req.files.images.path);
-        imageUrls.push(url);
-      }
-    }
-
     let newDetails = existingProduct.details;
     if (details) {
       try {
@@ -210,10 +182,6 @@ const editProduct = async (req, res) => {
       }
     });
 
-    if (imageUrl !== existingProduct.image) {
-      existingProduct.image = imageUrl;
-    }
-
     if (JSON.stringify(newDetails) !== JSON.stringify(existingProduct.details)) {
       existingProduct.details = newDetails;
     }
@@ -231,7 +199,7 @@ const editProduct = async (req, res) => {
         return {
           product: existingProduct._id,
           qty: variant.qty,
-          unit: variant.unit,
+          unit: variant.unit||"g",
           price: variant.price,
           discount: variant.discount,
           discountPrice: Number(discountPrice),
