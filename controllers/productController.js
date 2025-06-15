@@ -52,7 +52,7 @@ const addProduct = async (req, res) => {
       categoryName,
       name: productName,
       description: productDescription,
-      images, // array of image URLs
+      images,
       weight,
       stock,
       type: vegNonVeg,
@@ -97,7 +97,7 @@ const addProduct = async (req, res) => {
       variants: createdVariants,
     });
   } catch (error) {
-    console.error("Add product error:", error);
+    
     return res.status(500).json({ message: error.message });
   }
 };

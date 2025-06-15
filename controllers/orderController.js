@@ -7,6 +7,7 @@ const createNewOrder = async (req, res) => {
   try {
     const userId = req.user._id;
     const { cartItems, shippingAddress } = req.body;
+    
     if (!cartItems || !Array.isArray(cartItems.cartItems) || cartItems.cartItems.length === 0) {
       return res.status(400).json({ message: "Cart items cannot be empty." });
     }
@@ -22,10 +23,21 @@ const createNewOrder = async (req, res) => {
     const uniqueProductIds = [...new Set(productIds.map(id => id.toString()))];
 
     const products = await Product.find({ _id: { $in: uniqueProductIds } })
+    for(const item of cartItemsArray){
+      const product =products.find(p=>p._id.toString()===item.product._id.toString());
+      if (!product) {
+        return res.status(400).json({ message: `Product not found: ${item.product._id}` });
+      }
 
-    if (products.length !== uniqueProductIds.length) {
-      return res.status(400).json({ message: "One or more products are unavailable." });
+      if (product.stock < item.quantity) {
+        return res.status(400).json({ message: `Insufficient stock for product: ${product.name}` });
+      }
+
+
+      product.stock -= item.quantity;
+      await product.save();
     }
+    
 
     const newOrder = new Order({
       user: userId,
@@ -200,6 +212,32 @@ const updateOrder = async (req, res) => {
       return res.status(400).json({ message: "No fields provided for update" });
     }
 
+    // Fetch the order first to check current state
+    const order = await Order.findById(orderId)
+      .populate({
+        path: "orderItems",
+        populate: [
+          { path: "productId" },
+          { path: "variantDetails" }
+        ]
+      })
+      .populate("user");
+
+    if (!order) {
+      return res.status(404).json({ message: "Order not found" });
+    }
+
+    // ✅ Restore product stock if admin is rejecting the order
+    if (updateFields.orderStatus === "REJECT") {
+      for (const item of order.orderItems) {
+        if (item.productId) {
+          item.productId.stock += item.quantity;
+          await item.productId.save();
+        }
+      }
+    }
+
+    // ✅ Proceed to update the order fields
     const updatedOrder = await Order.findByIdAndUpdate(
       orderId,
       { $set: updateFields },
@@ -214,17 +252,15 @@ const updateOrder = async (req, res) => {
       })
       .populate("user");
 
-    if (!updatedOrder) {
-      return res.status(404).json({ message: "Order not found" });
-    }
+    // ✅ Send acceptance email if required
     if (
       updateFields.orderStatus === "ACCEPTED" &&
       updatedOrder.user?.email
     ) {
       await sendAcceptanceEmail(updatedOrder.user.email, updatedOrder);
     }
-    
 
+    // ✅ Send rejection email if required
     if (
       updateFields.orderStatus === "REJECT" &&
       updateFields.rejectReason &&
@@ -239,12 +275,9 @@ const updateOrder = async (req, res) => {
 
     res.status(200).json({ success: true, data: updatedOrder });
   } catch (error) {
-    
     return res.status(500).json({ message: "Internal server error", error: error.message });
   }
 };
-
-
 
 const getOrderById = async (req, res) => {
   try {
