@@ -4,7 +4,6 @@ const {uploadImage,deleteImage}=require("../utils/uploadImage");
 const cloudinary = require("../config/Cloudinary");
 const Variant=require("../models/VariantModel");
 
-
 const addProduct = async (req, res) => {
   try {
     const {
@@ -30,23 +29,35 @@ const addProduct = async (req, res) => {
       quantities,
       isArchive
     } = req.fields;
+
     let images = [];
 
-    const rawFiles = req.files['images[]'];
+    // ✅ Handle uploaded image files
+    const rawFiles = req.files['imagePreviews[]'];
     if (rawFiles) {
       const filesArray = Array.isArray(rawFiles) ? rawFiles : [rawFiles];
-
       images = await Promise.all(
-        filesArray.map(async (file) => {
-          return await uploadImage(file.path);
-        })
+        filesArray.map(async (file) => await uploadImage(file.path))
       );
     }
 
-    // Parse JSON fields safely
-    const parsedQuantities = typeof quantities === "string" ? JSON.parse(quantities) : quantities || [];
-    const parsedDetails = typeof details === "string" ? JSON.parse(details) : details || [];
+    // ✅ Parse JSON fields
+    let parsedQuantities = [];
+    let parsedDetails = [];
 
+    try {
+      parsedQuantities = typeof quantities === 'string' ? JSON.parse(quantities) : quantities || [];
+    } catch (err) {
+      return res.status(400).json({ message: "Invalid 'quantities' format." });
+    }
+
+    try {
+      parsedDetails = typeof details === 'string' ? JSON.parse(details) : details || [];
+    } catch (err) {
+      return res.status(400).json({ message: "Invalid 'details' format." });
+    }
+
+    // ✅ Create new product
     const newProduct = new Product({
       category,
       categoryName,
@@ -68,20 +79,25 @@ const addProduct = async (req, res) => {
       seller,
       disclaimer,
       details: parsedDetails,
-      isArchive
+      isArchive: isArchive === 'true' || isArchive === true,
     });
 
     const categoryData = await Category.findById(category);
+    if (!categoryData) {
+      return res.status(400).json({ message: "Invalid category selected." });
+    }
+
     await newProduct.save();
 
+    // ✅ Create variants
     let createdVariants = [];
     if (parsedQuantities.length > 0) {
       const variantDocs = parsedQuantities.map((variant) => ({
         product: newProduct._id,
         qty: variant.qty,
         unit: variant.unit,
-        price: variant.price,
-        discount: variant.discountPrice,
+        price: parseFloat(variant.price),
+        discount: parseFloat(variant.discountPrice),
         discountPrice: parseFloat((variant.discountPrice * variant.price) / 100),
         categoryDiscount: parseFloat((categoryData.discountPercentage * variant.price) / 100),
       }));
@@ -97,10 +113,11 @@ const addProduct = async (req, res) => {
       variants: createdVariants,
     });
   } catch (error) {
-    
-    return res.status(500).json({ message: error.message });
+    console.error("Add Product Error:", error);
+    return res.status(500).json({ message: "Server error while adding product." });
   }
 };
+
 
 
 
