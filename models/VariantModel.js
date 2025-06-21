@@ -6,7 +6,7 @@ const variantSchema = new mongoose.Schema(
     qty: { type: String, required: true },
     unit: { type: String, required: true },
     price: { type: Number, required: true, min: 0 },
-    discount:{type:Number,required:true,min:0},
+    discount:{type:Number,min:0},
     discountPrice: { type: Number, required: true, min: 0 },
     categoryDiscount:{type:Number,required:true,min:0}
   },
