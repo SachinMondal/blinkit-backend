@@ -74,11 +74,24 @@ const addCategory = async (req, res) => {
 const getCategories = async (req, res) => {
   try {
     const categories = await Category.find().populate("parentCategory", "name");
-    res.status(200).json({success:true,data:categories});
+    const parentCategories = categories.filter(cat => !cat.parentCategory);
+    const childCategories = categories.filter(cat => cat.parentCategory);
+    const result = parentCategories.map(parent => {
+      const children = childCategories.filter(
+        child => String(child.parentCategory._id) === String(parent._id)
+      );
+      return {
+        ...parent.toObject(),
+        subcategories: children
+      };
+    });
+
+    res.status(200).json({ success: true, data: result });
   } catch (error) {
     res.status(500).json({ message: "Error fetching categories", error });
   }
 };
+
 
 const getCategoryById = async (req, res) => {
   try {
