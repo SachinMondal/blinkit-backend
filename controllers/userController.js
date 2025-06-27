@@ -46,20 +46,28 @@ const verifyOTP = async (req, res) => {
 
     if (!storedOTP) return res.status(400).json({ message: "OTP expired or not found" });
 
+    // ✅ Check if OTP is expired
+    if (Date.now() > storedOTP.expiresAt) {
+      otpStore.delete(email); // clear expired OTP
+      return res.status(400).json({ message: "OTP has expired" });
+    }
+
+    // ✅ Check if OTP is correct
     if (storedOTP.otp !== otp) return res.status(400).json({ message: "Invalid OTP" });
 
-    otpStore.delete(email); 
+    otpStore.delete(email); // OTP verified, remove it
 
     let user = await User.findOne({ email });
-    if(!user){
-        return res.status(404).json({ message: "user not found" });
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
     }
+
     const token = generateToken(user);
     user.verified = true;
     await user.save();
-    return res.status(200).json({ message: "Login successful", user,token:token });
+
+    return res.status(200).json({ message: "Login successful", user, token });
   } catch (error) {
-    
     return res.status(500).json({ message: "Error verifying OTP", error });
   }
 };
