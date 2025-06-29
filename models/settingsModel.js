@@ -11,6 +11,7 @@ const settingsSchema = new mongoose.Schema({
     required: true,
     default: 0,
   },
+   lastUpdatedBy: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
 }, { timestamps: true });
 
 module.exports = mongoose.model("Settings", settingsSchema);

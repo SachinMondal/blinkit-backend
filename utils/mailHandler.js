@@ -25,9 +25,8 @@ const sendOtpEmail = async (to, otp) => {
     };
 
     await transporter.sendMail(mailOptions);
-    console.log(`✅ OTP sent to ${to}`);
   } catch (error) {
-    console.error(`❌ Error sending OTP to ${to}:`, error.message);
+    return error;
   }
 };
 
@@ -123,9 +122,8 @@ const sendRejectionEmail = async (userEmail, order, reason) => {
 
   try {
     await transporter.sendMail(mailOptions);
-    console.log(`Rejection email sent to ${userEmail}`);
   } catch (err) {
-    console.error("Failed to send email:", err);
+    return err;
   }
 };
 
@@ -249,9 +247,8 @@ const sendAcceptanceEmail = async (userEmail, order) => {
 
   try {
     await transporter.sendMail(mailOptions);
-    console.log(`Acceptance email sent to ${userEmail}`);
   } catch (err) {
-    console.error("Failed to send acceptance email:", err);
+    return err;
   }
 };
 
