@@ -65,9 +65,9 @@ const addCategory = async (req, res) => {
     });
 
     await newCategory.save();
-    res.status(201).json({ message: "Category added successfully", newCategory });
+    res.status(201).json({success:true, message: "Category added successfully", newCategory });
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    res.status(500).json({success:false, message: error.message });
   }
 };
 
@@ -88,7 +88,7 @@ const getCategories = async (req, res) => {
 
     res.status(200).json({ success: true, data: result });
   } catch (error) {
-    res.status(500).json({ message: "Error fetching categories", error });
+    res.status(500).json({ success:false,message: "Error fetching categories", error });
   }
 };
 
@@ -100,11 +100,11 @@ const getCategoryById = async (req, res) => {
       "name"
     );
     if (!category)
-      return res.status(404).json({ message: "Category not found" });
+      return res.status(404).json({success:false, message: "Category not found" });
 
     res.status(200).json(category);
   } catch (error) {
-    res.status(500).json({ message: "Error fetching category", error });
+    res.status(500).json({ success:false,message: "Error fetching category", error });
   }
 };
 const updateCategory = async (req, res) => {
@@ -143,7 +143,7 @@ const updateCategory = async (req, res) => {
 
     const currentCategory = await Category.findById(id);
     if (!currentCategory) {
-      return res.status(404).json({ message: "Category not found" });
+      return res.status(404).json({success:false, message: "Category not found" });
     }
 
     const isDiscountChanged =
@@ -202,10 +202,10 @@ const updateCategory = async (req, res) => {
       }
     }
 
-    res.status(200).json({ message: "Category updated successfully", updatedCategory });
+    res.status(200).json({success:true, message: "Category updated successfully", updatedCategory });
   } catch (error) {
     
-    return res.status(500).json({ message: error.message });
+    return res.status(500).json({ success:false,message: error.message });
   }
 };
 
@@ -213,7 +213,7 @@ const deleteCategory = async (req, res) => {
   try {
     const category = await Category.findById(req.params.id);
     if (!category) {
-      return res.status(404).json({ message: "Category not found" });
+      return res.status(404).json({success:false, message: "Category not found" });
     }
 
     // 🔹 Extract Cloudinary Public ID from the image URL
@@ -227,10 +227,10 @@ const deleteCategory = async (req, res) => {
 
     // 🔥 Delete the category from the database
     await Category.findByIdAndDelete(req.params.id);
-    res.status(200).json({ message: "Category deleted successfully" });
+    res.status(200).json({success:true, message: "Category deleted successfully" });
   } catch (error) {
     
-    return res.status(500).json({ message: "Error deleting category", error });
+    return res.status(500).json({success:false, message: "Error deleting category", error });
   }
 };
 

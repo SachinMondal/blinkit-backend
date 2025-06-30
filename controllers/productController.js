@@ -48,13 +48,13 @@ const addProduct = async (req, res) => {
     try {
       parsedQuantities = typeof quantities === 'string' ? JSON.parse(quantities) : quantities || [];
     } catch (err) {
-      return res.status(400).json({ message: "Invalid 'quantities' format." });
+      return res.status(400).json({success:false, message: "Invalid 'quantities' format." });
     }
 
     try {
       parsedDetails = typeof details === 'string' ? JSON.parse(details) : details || [];
     } catch (err) {
-      return res.status(400).json({ message: "Invalid 'details' format." });
+      return res.status(400).json({success:false, message: "Invalid 'details' format." });
     }
 
     // ✅ Create new product
@@ -84,7 +84,7 @@ const addProduct = async (req, res) => {
 
     const categoryData = await Category.findById(category);
     if (!categoryData) {
-      return res.status(400).json({ message: "Invalid category selected." });
+      return res.status(400).json({success:false, message: "Invalid category selected." });
     }
 
     await newProduct.save();
@@ -108,13 +108,13 @@ const addProduct = async (req, res) => {
     }
 
     res.status(201).json({
+      success:true,
       message: "Product added successfully",
       product: newProduct,
       variants: createdVariants,
     });
   } catch (error) {
-    console.error("Add Product Error:", error);
-    return res.status(500).json({ message: "Server error while adding product." });
+    return res.status(500).json({success:false, message: "Server error while adding product." });
   }
 };
 
@@ -162,7 +162,7 @@ const editProduct = async (req, res) => {
     const { quantities, details, variants, ...updatedFields } = req.fields;
     const existingProduct = await Product.findById(req.params.id);
     if (!existingProduct) {
-      return res.status(404).json({ message: "Product not found!" });
+      return res.status(404).json({success:false, message: "Product not found!" });
     }
 
     let newDetails = existingProduct.details;
@@ -170,7 +170,7 @@ const editProduct = async (req, res) => {
       try {
         newDetails = JSON.parse(details);
       } catch (error) {
-        return res.status(400).json({ message: "Invalid details format" });
+        return res.status(400).json({success:false, message: "Invalid details format" });
       }
     }
 
@@ -179,7 +179,7 @@ const editProduct = async (req, res) => {
       try {
         newQuantities = JSON.parse(quantities);
       } catch (error) {
-        return res.status(400).json({ message: "Invalid quantities format" });
+        return res.status(400).json({success:false, message: "Invalid quantities format" });
       }
     }
 
@@ -188,7 +188,7 @@ const editProduct = async (req, res) => {
       try {
         newVariants = JSON.parse(variants);
       } catch (error) {
-        return res.status(400).json({ message: "Invalid variants format" });
+        return res.status(400).json({success:false, message: "Invalid variants format" });
       }
     }
 
@@ -230,7 +230,7 @@ const editProduct = async (req, res) => {
 
     await existingProduct.save();
 
-    res.json({ message: "Product updated successfully", updatedProduct: existingProduct });
+    res.json({success:true, message: "Product updated successfully", updatedProduct: existingProduct });
   } catch (error) {
     console.error("Error updating product:", error);
     return res.status(500).json({ message: error.message });
@@ -242,7 +242,7 @@ const deleteProduct = async (req, res) => {
     try {
       const product = await Product.findById(req.params.id);
       if (!product) {
-        return res.status(404).json({ message: "Product not found" });
+        return res.status(404).json({success:false, message: "Product not found" });
       }
        if (product.images && product.images.length > 0) {
       for (const imgUrl of product.images) {
@@ -251,10 +251,10 @@ const deleteProduct = async (req, res) => {
       }
     }
       await Product.findByIdAndDelete(req.params.id);
-      res.status(200).json({ message: "Product deleted successfully" });
+      res.status(200).json({success:true, message: "Product deleted successfully" });
     } catch (error) {
       
-      return res.status(500).json({ message: "Error deleting product", error });
+      return res.status(500).json({ success:false,message: "Error deleting product", error });
     }
   };
   
@@ -329,7 +329,7 @@ const searchProducts = async (req, res) => {
     });
   } catch (error) {
     
-    return res.status(500).json({ message: "Server Error", error: error.message });
+    return res.status(500).json({success:false, message: "Server Error", error: error.message });
   }
 };
 
